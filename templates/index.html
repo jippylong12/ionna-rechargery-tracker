@@ -44,14 +44,15 @@
           <div class="panel__head map-panel__head">
             <div><p class="eyebrow">NETWORK FOOTPRINT</p><h2>Every Rechargery, in context</h2></div>
             <div class="map-legend" aria-label="Map status legend">
-              <span><i class="map-key map-key--open"></i>Open</span>
-              <span><i class="map-key map-key--soon"></i>Coming soon</span>
-              <span><i class="map-key map-key--renovation"></i>Renovation</span>
+              <span><i class="map-key map-key--open" aria-hidden="true"></i>Open</span>
+              <span><i class="map-key map-key--soon" aria-hidden="true"></i>Coming soon</span>
+              <span><i class="map-key map-key--renovation" aria-hidden="true"></i>Renovation</span>
+              <span><i class="map-key map-key--unknown" aria-hidden="true"></i>Unknown</span>
             </div>
           </div>
           <div id="location-map" class="location-map" role="region" aria-label="Interactive map of IONNA Rechargery locations"></div>
           <div class="map-panel__footer">
-            <p id="map-location-count" class="fine-print">Preparing location map…</p>
+            <p id="map-location-count" class="fine-print" aria-live="polite">Preparing location map…</p>
             <p class="fine-print">The map follows the Location Explorer filters. Zoom with the controls or pinch gesture.</p>
           </div>
         </section>

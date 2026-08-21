@@ -6,7 +6,9 @@ const {
   locationCoordinates,
   mapStatusColor,
   nextSort,
+  renderMap,
   safeExternalUrl,
+  setupMap,
   sortValue,
 } = require("../static/dashboard.js");
 
@@ -61,4 +63,64 @@ test("uses status colors and permits only web location links", () => {
   assert.equal(safeExternalUrl("https://www.ionna.com/rechargery/example/"), "https://www.ionna.com/rechargery/example/");
   assert.equal(safeExternalUrl("javascript:alert(1)"), "");
   assert.equal(safeExternalUrl("not a URL"), "");
+});
+
+test("map initialization failures preserve the table fallback", () => {
+  const hosts = {
+    "#location-map": { innerHTML: "" },
+    "#map-location-count": { textContent: "" },
+  };
+  const originalDocument = global.document;
+  const originalLeaflet = global.L;
+  const originalWarn = console.warn;
+  global.document = { querySelector: (selector) => hosts[selector] || null };
+  global.L = { map: () => { throw new Error("canvas unavailable"); } };
+  console.warn = () => {};
+
+  try {
+    assert.doesNotThrow(() => setupMap());
+    assert.match(hosts["#location-map"].innerHTML, /location table remains fully usable/i);
+    assert.match(hosts["#map-location-count"].textContent, /table still active/i);
+  } finally {
+    if (originalDocument === undefined) delete global.document;
+    else global.document = originalDocument;
+    if (originalLeaflet === undefined) delete global.L;
+    else global.L = originalLeaflet;
+    console.warn = originalWarn;
+  }
+});
+
+test("marker rendering failures preserve the table fallback", () => {
+  const hosts = {
+    "#location-map": { innerHTML: "" },
+    "#map-location-count": { textContent: "" },
+  };
+  const map = { remove: () => {} };
+  const markerLayer = {
+    addTo: () => markerLayer,
+    clearLayers: () => { throw new Error("renderer unavailable"); },
+  };
+  const originalDocument = global.document;
+  const originalLeaflet = global.L;
+  const originalWarn = console.warn;
+  global.document = { querySelector: (selector) => hosts[selector] || null };
+  global.L = {
+    map: () => map,
+    tileLayer: () => ({ addTo: () => {} }),
+    layerGroup: () => markerLayer,
+  };
+  console.warn = () => {};
+
+  try {
+    setupMap();
+    assert.doesNotThrow(() => renderMap([]));
+    assert.match(hosts["#location-map"].innerHTML, /location table remains fully usable/i);
+    assert.match(hosts["#map-location-count"].textContent, /table still active/i);
+  } finally {
+    if (originalDocument === undefined) delete global.document;
+    else global.document = originalDocument;
+    if (originalLeaflet === undefined) delete global.L;
+    else global.L = originalLeaflet;
+    console.warn = originalWarn;
+  }
 });

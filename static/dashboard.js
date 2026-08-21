@@ -93,52 +93,77 @@ function mapPopup(item) {
     <span class="status status--${escapeHtml(item.status)}">${escapeHtml(statusLabel(item.status))}</span>`;
 }
 
+function showMapFallback(error = null) {
+  const host = $("#location-map");
+  if (!host) return;
+  if (state.map) {
+    try {
+      state.map.remove();
+    } catch (_removeError) {
+      // Leaflet may be only partially initialized; replacing the host is enough.
+    }
+  }
+  state.map = null;
+  state.mapMarkers = null;
+  host.innerHTML = '<div class="map-fallback">Map tiles are unavailable. The location table remains fully usable.</div>';
+  const count = $("#map-location-count");
+  if (count) count.textContent = "Map unavailable; location table still active";
+  if (error) console.warn("Location map unavailable", error);
+}
+
 function setupMap() {
   const host = $("#location-map");
   if (!host) return;
   if (typeof L === "undefined") {
-    host.innerHTML = '<div class="map-fallback">Map tiles are unavailable. The location table remains fully usable.</div>';
-    $("#map-location-count").textContent = "Map library unavailable";
+    showMapFallback();
     return;
   }
 
-  state.map = L.map(host, {
-    minZoom: 3,
-    scrollWheelZoom: false,
-    preferCanvas: true,
-  });
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(state.map);
-  state.mapMarkers = L.layerGroup().addTo(state.map);
+  try {
+    state.map = L.map(host, {
+      minZoom: 3,
+      scrollWheelZoom: false,
+      preferCanvas: true,
+    });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(state.map);
+    state.mapMarkers = L.layerGroup().addTo(state.map);
+  } catch (error) {
+    showMapFallback(error);
+  }
 }
 
 function renderMap(locations) {
   if (!state.map || !state.mapMarkers) return;
-  state.mapMarkers.clearLayers();
-  const bounds = [];
+  try {
+    state.mapMarkers.clearLayers();
+    const bounds = [];
 
-  locations.forEach((item) => {
-    const coordinates = locationCoordinates(item);
-    if (!coordinates) return;
-    bounds.push(coordinates);
-    L.circleMarker(coordinates, {
-      radius: 6,
-      color: "#fffef9",
-      weight: 1.5,
-      fillColor: mapStatusColor(item.status),
-      fillOpacity: 0.92,
-    }).bindPopup(mapPopup(item), { maxWidth: 320 }).addTo(state.mapMarkers);
-  });
+    locations.forEach((item) => {
+      const coordinates = locationCoordinates(item);
+      if (!coordinates) return;
+      bounds.push(coordinates);
+      L.circleMarker(coordinates, {
+        radius: 6,
+        color: "#fffef9",
+        weight: 1.5,
+        fillColor: mapStatusColor(item.status),
+        fillOpacity: 0.92,
+      }).bindPopup(mapPopup(item), { maxWidth: 320 }).addTo(state.mapMarkers);
+    });
 
-  if (bounds.length === 1) state.map.setView(bounds[0], 10, { animate: false });
-  else if (bounds.length > 1) state.map.fitBounds(bounds, { padding: [24, 24], maxZoom: 10, animate: false });
-  else state.map.setView([39.5, -98.35], 4, { animate: false });
+    if (bounds.length === 1) state.map.setView(bounds[0], 10, { animate: false });
+    else if (bounds.length > 1) state.map.fitBounds(bounds, { padding: [24, 24], maxZoom: 10, animate: false });
+    else state.map.setView([39.5, -98.35], 4, { animate: false });
 
-  $("#map-location-count").textContent = bounds.length === locations.length
-    ? `${bounds.length} locations mapped from IONNA coordinates`
-    : `${bounds.length} of ${locations.length} locations have mappable coordinates`;
+    $("#map-location-count").textContent = bounds.length === locations.length
+      ? `${bounds.length} locations mapped from IONNA coordinates`
+      : `${bounds.length} of ${locations.length} locations have mappable coordinates`;
+  } catch (error) {
+    showMapFallback(error);
+  }
 }
 
 function updateSortHeaders() {
@@ -299,7 +324,9 @@ if (typeof module !== "undefined" && module.exports) {
     locationCoordinates,
     mapStatusColor,
     nextSort,
+    renderMap,
     safeExternalUrl,
+    setupMap,
     sortValue,
   };
 }

@@ -59,7 +59,7 @@ h1 span { color: var(--teal); font-weight: 400; }
 .map-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 15px; color: var(--muted); font-size: 11px; }
 .map-legend span { display: flex; align-items: center; gap: 6px; }
 .map-key { width: 9px; height: 9px; border: 2px solid var(--white); border-radius: 50%; box-shadow: 0 0 0 1px rgba(16,38,49,.16); }
-.map-key--open { background: var(--teal-dark); }.map-key--soon { background: var(--orange); }.map-key--renovation { background: var(--coral); }
+.map-key--open { background: var(--teal-dark); }.map-key--soon { background: var(--orange); }.map-key--renovation { background: var(--coral); }.map-key--unknown { background: #8d9999; }
 .location-map { height: 480px; margin: 0 -28px; background: #dce5e2; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .map-panel__footer { display: flex; justify-content: space-between; gap: 20px; padding-top: 14px; }
 .map-panel__footer p { margin: 0; }
