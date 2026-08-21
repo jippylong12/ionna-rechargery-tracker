@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.marcus.ionna-rechargery-tracker</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker/.venv/bin/python</string>
+    <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker/scrape.py</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker</string>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <false/>
+  <key>KeepAlive</key>
+  <false/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker/logs/nightly.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker/logs/nightly-error.log</string>
+</dict>
+</plist>

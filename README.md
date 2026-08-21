@@ -42,7 +42,30 @@ python server.py
 
 Then open <http://127.0.0.1:5050>.
 
-Run the collector whenever you want a fresh observation. There is deliberately no scheduler.
+Run the collector whenever you want a fresh observation. Scheduling is opt-in and disabled until you turn on the macOS LaunchAgent below.
+
+## Optional nightly collection on macOS
+
+This repository includes an optional LaunchAgent that runs one direct collection every day at 3:00 AM local time. The dashboard server does not need to be running. If the Mac is asleep at 3:00 AM, macOS runs the calendar job after it wakes.
+
+```bash
+# Install and turn on the nightly job
+bin/nightly-schedule on
+
+# Check whether it is loaded
+bin/nightly-schedule status
+
+# Trigger one collection now
+bin/nightly-schedule run
+
+# Read recent standard-output and error logs
+bin/nightly-schedule logs
+
+# Unload it and keep it off across login/restart
+bin/nightly-schedule off
+```
+
+The job uses this checkout's `.venv`, the default direct-request collector, the local MongoDB service, and log files under `logs/`.
 
 ## Optional headless-browser fallback
 

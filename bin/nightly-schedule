@@ -1,0 +1,67 @@
+#!/bin/zsh
+set -euo pipefail
+
+readonly LABEL="com.marcus.ionna-rechargery-tracker"
+readonly SCRIPT_DIR="${0:A:h}"
+readonly PROJECT_DIR="${SCRIPT_DIR:h}"
+readonly SOURCE_PLIST="${PROJECT_DIR}/launchd/${LABEL}.plist"
+readonly INSTALLED_PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
+readonly DOMAIN="gui/$(id -u)"
+readonly LOG_DIR="${PROJECT_DIR}/logs"
+
+usage() {
+  echo "Usage: bin/nightly-schedule {on|off|status|run|logs}"
+}
+
+is_loaded() {
+  launchctl print "${DOMAIN}/${LABEL}" >/dev/null 2>&1
+}
+
+case "${1:-}" in
+  on)
+    mkdir -p "${LOG_DIR}" "${HOME}/Library/LaunchAgents"
+    if is_loaded; then
+      launchctl bootout "${DOMAIN}/${LABEL}"
+    fi
+    cp "${SOURCE_PLIST}" "${INSTALLED_PLIST}"
+    launchctl bootstrap "${DOMAIN}" "${INSTALLED_PLIST}"
+    echo "Nightly IONNA collection is ON — daily at 3:00 AM local time."
+    ;;
+  off)
+    if is_loaded; then
+      launchctl bootout "${DOMAIN}/${LABEL}"
+    fi
+    rm -f "${INSTALLED_PLIST}"
+    echo "Nightly IONNA collection is OFF."
+    ;;
+  status)
+    if is_loaded; then
+      echo "Nightly IONNA collection is ON — daily at 3:00 AM local time."
+    else
+      echo "Nightly IONNA collection is OFF."
+    fi
+    ;;
+  run)
+    if ! is_loaded; then
+      echo "Nightly IONNA collection is OFF. Run 'bin/nightly-schedule on' first." >&2
+      exit 1
+    fi
+    launchctl kickstart -k "${DOMAIN}/${LABEL}"
+    echo "Started one collection. Check 'bin/nightly-schedule logs' for its output."
+    ;;
+  logs)
+    mkdir -p "${LOG_DIR}"
+    for log_file in "${LOG_DIR}/nightly.log" "${LOG_DIR}/nightly-error.log"; do
+      echo "==> ${log_file} <=="
+      if [[ -f "${log_file}" ]]; then
+        tail -n 50 "${log_file}"
+      else
+        echo "No log entries yet."
+      fi
+    done
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
