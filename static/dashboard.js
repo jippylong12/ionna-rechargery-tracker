@@ -83,7 +83,7 @@ function mapStatusColor(status) {
 }
 
 function mapTypeShape(type) {
-  return MAP_TYPE_SHAPES[type] || "circle";
+  return MAP_TYPE_SHAPES[type] || "pentagon";
 }
 
 function mapMarkerIcon(item) {

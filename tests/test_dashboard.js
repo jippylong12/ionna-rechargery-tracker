@@ -73,7 +73,8 @@ test("uses a distinct map shape for each Rechargery type", () => {
   assert.equal(mapTypeShape("Rechargery @"), "square");
   assert.equal(mapTypeShape("Rechargery Beacon"), "diamond");
   assert.equal(mapTypeShape("Rechargery Relay"), "triangle");
-  assert.equal(mapTypeShape("Future type"), "circle");
+  assert.equal(mapTypeShape("Future type"), "pentagon");
+  assert.equal(mapTypeShape(null), "pentagon");
 });
 
 test("limits map wheel zoom to Command or Control scrolling", () => {
