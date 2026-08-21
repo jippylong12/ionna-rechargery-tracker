@@ -77,11 +77,21 @@
           <div class="explorer-map">
             <div class="explorer-view-head">
               <div><p class="eyebrow explorer-view-label">MAP VIEW</p><h3>Network footprint</h3></div>
-              <div class="map-legend" aria-label="Map status legend">
-                <span><i class="map-key map-key--open" aria-hidden="true"></i>Open</span>
-                <span><i class="map-key map-key--soon" aria-hidden="true"></i>Coming soon</span>
-                <span><i class="map-key map-key--renovation" aria-hidden="true"></i>Renovation</span>
-                <span><i class="map-key map-key--unknown" aria-hidden="true"></i>Unknown</span>
+              <div class="map-legends" role="group" aria-label="Map legend">
+                <div class="map-legend">
+                  <strong class="map-legend__label">Status</strong>
+                  <span><i class="map-key map-key--open" aria-hidden="true"></i>Open</span>
+                  <span><i class="map-key map-key--soon" aria-hidden="true"></i>Coming soon</span>
+                  <span><i class="map-key map-key--renovation" aria-hidden="true"></i>Renovation</span>
+                  <span><i class="map-key map-key--unknown" aria-hidden="true"></i>Unknown</span>
+                </div>
+                <div class="map-legend">
+                  <strong class="map-legend__label">Type</strong>
+                  <span><i class="map-shape map-shape--circle" aria-hidden="true"></i>Rechargery</span>
+                  <span><i class="map-shape map-shape--square" aria-hidden="true"></i>Rechargery @</span>
+                  <span><i class="map-shape map-shape--diamond" aria-hidden="true"></i>Beacon</span>
+                  <span><i class="map-shape map-shape--triangle" aria-hidden="true"></i>Relay</span>
+                </div>
               </div>
             </div>
             <div id="location-map" class="location-map" role="region" aria-label="Interactive map of filtered IONNA Rechargery locations"></div>

@@ -22,6 +22,13 @@ const MAP_STATUS_COLORS = {
   unknown: "#8d9999",
 };
 
+const MAP_TYPE_SHAPES = {
+  "Rechargery": "circle",
+  "Rechargery @": "square",
+  "Rechargery Beacon": "diamond",
+  "Rechargery Relay": "triangle",
+};
+
 const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
   .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
@@ -75,6 +82,21 @@ function mapStatusColor(status) {
   return MAP_STATUS_COLORS[status] || MAP_STATUS_COLORS.unknown;
 }
 
+function mapTypeShape(type) {
+  return MAP_TYPE_SHAPES[type] || "circle";
+}
+
+function mapMarkerIcon(item) {
+  const shape = mapTypeShape(item.type);
+  return L.divIcon({
+    className: "map-marker-icon",
+    html: `<span class="map-shape map-shape--${shape}" style="--map-marker-color:${mapStatusColor(item.status)}" aria-hidden="true"></span>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+    popupAnchor: [0, -8],
+  });
+}
+
 function safeExternalUrl(value) {
   try {
     const url = new URL(value);
@@ -90,6 +112,7 @@ function mapPopup(item) {
     ? `<a class="map-popup__title" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>`
     : `<strong class="map-popup__title">${escapeHtml(item.title)}</strong>`;
   return `${title}
+    <span class="map-popup__type">${escapeHtml(item.type || "Unknown type")}</span>
     <span class="map-popup__address">${escapeHtml(item.street)}, ${escapeHtml(item.city)}, ${escapeHtml(item.state)} ${escapeHtml(item.postcode)}</span>
     <span class="status status--${escapeHtml(item.status)}">${escapeHtml(statusLabel(item.status))}</span>`;
 }
@@ -163,12 +186,11 @@ function renderMap(locations) {
       const coordinates = locationCoordinates(item);
       if (!coordinates) return;
       bounds.push(coordinates);
-      L.circleMarker(coordinates, {
-        radius: 6,
-        color: "#fffef9",
-        weight: 1.5,
-        fillColor: mapStatusColor(item.status),
-        fillOpacity: 0.92,
+      L.marker(coordinates, {
+        icon: mapMarkerIcon(item),
+        keyboard: true,
+        riseOnHover: true,
+        title: `${item.title} — ${statusLabel(item.status)} — ${item.type || "Unknown type"}`,
       }).bindPopup(mapPopup(item), { maxWidth: 320 }).addTo(state.mapMarkers);
     });
 
@@ -342,6 +364,7 @@ if (typeof module !== "undefined" && module.exports) {
     compareLocations,
     locationCoordinates,
     mapStatusColor,
+    mapTypeShape,
     mapWheelZoomAllowed,
     nextSort,
     renderMap,

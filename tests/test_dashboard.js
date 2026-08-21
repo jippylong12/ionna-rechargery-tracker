@@ -5,6 +5,7 @@ const {
   compareLocations,
   locationCoordinates,
   mapStatusColor,
+  mapTypeShape,
   mapWheelZoomAllowed,
   nextSort,
   renderMap,
@@ -67,6 +68,14 @@ test("uses status colors and permits only web location links", () => {
   assert.equal(safeExternalUrl("not a URL"), "");
 });
 
+test("uses a distinct map shape for each Rechargery type", () => {
+  assert.equal(mapTypeShape("Rechargery"), "circle");
+  assert.equal(mapTypeShape("Rechargery @"), "square");
+  assert.equal(mapTypeShape("Rechargery Beacon"), "diamond");
+  assert.equal(mapTypeShape("Rechargery Relay"), "triangle");
+  assert.equal(mapTypeShape("Future type"), "circle");
+});
+
 test("limits map wheel zoom to Command or Control scrolling", () => {
   let wheelHandler;
   let listenerOptions;
@@ -103,6 +112,62 @@ test("limits map wheel zoom to Command or Control scrolling", () => {
 
   cleanup();
   assert.equal(removed, true);
+});
+
+test("renders filtered locations with status colors and type shapes", () => {
+  const hosts = {
+    "#location-map": {
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      innerHTML: "",
+    },
+    "#map-location-count": { textContent: "" },
+  };
+  const markerIcons = [];
+  const map = {
+    fitBounds: () => {},
+    remove: () => {},
+    setView: () => {},
+  };
+  const markerLayer = {
+    addTo: () => markerLayer,
+    clearLayers: () => {},
+  };
+  const originalDocument = global.document;
+  const originalLeaflet = global.L;
+  global.document = { querySelector: (selector) => hosts[selector] || null };
+  global.L = {
+    divIcon: (options) => options,
+    layerGroup: () => markerLayer,
+    map: () => map,
+    marker: (_coordinates, options) => {
+      markerIcons.push(options.icon.html);
+      const marker = {
+        addTo: () => marker,
+        bindPopup: () => marker,
+      };
+      return marker;
+    },
+    tileLayer: () => ({ addTo: () => {} }),
+  };
+
+  try {
+    setupMap();
+    renderMap([
+      { title: "Open Relay", type: "Rechargery Relay", status: "open", latitude: 30, longitude: -97, street: "1 Main", city: "Austin", state: "TX", postcode: "78701" },
+      { title: "Future @", type: "Rechargery @", status: "coming_soon", latitude: 31, longitude: -98, street: "2 Main", city: "Waco", state: "TX", postcode: "76701" },
+    ]);
+    assert.match(markerIcons[0], /map-shape--triangle/);
+    assert.match(markerIcons[0], /#416d78/);
+    assert.match(markerIcons[1], /map-shape--square/);
+    assert.match(markerIcons[1], /#f0a340/);
+    assert.equal(hosts["#map-location-count"].textContent, "2 locations mapped from IONNA coordinates");
+  } finally {
+    if (originalDocument === undefined) delete global.document;
+    else global.document = originalDocument;
+    if (originalLeaflet === undefined) delete global.L;
+    else global.L = originalLeaflet;
+  }
 });
 
 test("map initialization failures preserve the table fallback", () => {
