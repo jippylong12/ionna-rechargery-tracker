@@ -68,6 +68,7 @@ MONGODB_DATABASE=my_ionna_data python scrape.py
 
 # Run tests
 python -m unittest discover -s tests -v
+node --test tests/test_dashboard.js
 ```
 
 ## MongoDB collections

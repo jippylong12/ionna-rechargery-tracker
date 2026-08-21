@@ -72,6 +72,10 @@ input { width: 260px; }
 .table-scroll { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th { padding: 11px 10px; color: var(--muted); border-bottom: 1px solid var(--line); text-align: left; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+.sort-button { display: inline-flex; align-items: center; gap: 7px; margin: -7px -8px; padding: 7px 8px; color: inherit; background: transparent; border: 0; border-radius: 2px; font: inherit; font-weight: 800; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.sort-button:hover { color: var(--coral); background: #f4eee8; }
+.sort-button:focus-visible { color: var(--coral); outline: 2px solid var(--orange); outline-offset: 2px; }
+.sort-button__icon { width: 10px; color: var(--coral); font-size: 12px; line-height: 1; text-align: center; }
 td { padding: 14px 10px; border-bottom: 1px solid #e9ecea; vertical-align: top; }
 .location-name { display: block; max-width: 360px; color: var(--ink); font-weight: 750; text-decoration: none; }
 .location-name:hover { color: var(--coral); }

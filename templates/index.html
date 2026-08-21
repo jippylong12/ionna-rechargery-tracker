@@ -70,7 +70,12 @@
           </div>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Location</th><th>Status</th><th>Type</th><th>Connectors</th><th>Price</th><th>First seen</th></tr></thead>
+              <thead><tr>
+                <th scope="col" aria-sort="ascending"><button class="sort-button" type="button" data-sort-key="location">Location <span class="sort-button__icon" aria-hidden="true">↑</span></button></th>
+                <th scope="col" aria-sort="none"><button class="sort-button" type="button" data-sort-key="status">Status <span class="sort-button__icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col" aria-sort="none"><button class="sort-button" type="button" data-sort-key="type">Type <span class="sort-button__icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col">Connectors</th><th scope="col">Price</th><th scope="col">First seen</th>
+              </tr></thead>
               <tbody id="locations-table"></tbody>
             </table>
           </div>

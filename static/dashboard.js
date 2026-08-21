@@ -1,5 +1,16 @@
-const state = { data: null, filteredLocations: [] };
+const state = {
+  data: null,
+  filteredLocations: [],
+  sort: { key: "location", direction: "ascending" },
+};
 const $ = (selector) => document.querySelector(selector);
+
+const STATUS_SORT_ORDER = {
+  open: 0,
+  coming_soon: 1,
+  under_renovation: 2,
+  unknown: 3,
+};
 
 const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -12,6 +23,56 @@ const statusLabel = (status) => ({
 const formatDate = (value, options = {}) => value
   ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: options.time ? "short" : undefined }).format(new Date(value))
   : "—";
+
+function sortValue(item, key) {
+  if (key === "status") return STATUS_SORT_ORDER[item.status] ?? 99;
+  if (key === "type") return item.type || "";
+  return item.title || "";
+}
+
+function compareLocations(a, b, sort) {
+  const left = sortValue(a, sort.key);
+  const right = sortValue(b, sort.key);
+  const primary = typeof left === "number"
+    ? left - right
+    : left.localeCompare(right, undefined, { sensitivity: "base" });
+  const direction = sort.direction === "descending" ? -1 : 1;
+  if (primary) return primary * direction;
+  return (a.state || "").localeCompare(b.state || "")
+    || (a.city || "").localeCompare(b.city || "")
+    || (a.title || "").localeCompare(b.title || "");
+}
+
+function nextSort(current, key) {
+  return {
+    key,
+    direction: current.key === key && current.direction === "ascending"
+      ? "descending"
+      : "ascending",
+  };
+}
+
+function updateSortHeaders() {
+  document.querySelectorAll("[data-sort-key]").forEach((button) => {
+    const header = button.closest("th");
+    const active = button.dataset.sortKey === state.sort.key;
+    header.setAttribute("aria-sort", active ? state.sort.direction : "none");
+    button.querySelector(".sort-button__icon").textContent = active
+      ? (state.sort.direction === "ascending" ? "↑" : "↓")
+      : "↕";
+  });
+}
+
+function setupSorting() {
+  document.querySelectorAll("[data-sort-key]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.sort = nextSort(state.sort, button.dataset.sortKey);
+      updateSortHeaders();
+      renderLocations();
+    });
+  });
+  updateSortHeaders();
+}
 
 function populateSummary(data) {
   const s = data.summary;
@@ -89,7 +150,7 @@ function renderLocations() {
     const haystack = `${item.title} ${item.street} ${item.city} ${item.state} ${item.postcode}`.toLowerCase();
     return (!query || haystack.includes(query)) && (!selectedState || item.state === selectedState)
       && (!status || item.status === status) && (!type || item.type === type);
-  }).sort((a, b) => a.state.localeCompare(b.state) || a.city.localeCompare(b.city));
+  }).sort((a, b) => compareLocations(a, b, state.sort));
   state.filteredLocations = filtered;
   $("#locations-table").innerHTML = filtered.map((item) => {
     const connectors = [[item.nacs_connectors, "NACS"], [item.ccs_connectors, "CCS"]]
@@ -129,11 +190,15 @@ async function loadDashboard() {
     }
     state.data = data;
     populateSummary(data); renderHistory(data.history); renderStates(data.states); renderTypes(data.types);
-    setupFilters(data); renderLocations(); renderEvents(data);
+    setupFilters(data); setupSorting(); renderLocations(); renderEvents(data);
   } catch (error) {
     $("#dashboard-content").innerHTML = `<div class="error-banner"><strong>Dashboard unavailable.</strong> ${escapeHtml(error.message)}</div>`;
     $("#last-updated").textContent = "Local data unavailable";
   }
 }
 
-loadDashboard();
+if (typeof document !== "undefined") loadDashboard();
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { compareLocations, nextSort, sortValue };
+}
