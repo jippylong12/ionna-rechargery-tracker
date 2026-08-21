@@ -33,11 +33,12 @@ h1 span { color: var(--teal); font-weight: 400; }
 .metric-grid { display: grid; grid-template-columns: 1.25fr repeat(4, 1fr); gap: 12px; }
 .metric, .panel, .empty-state { background: var(--white); border: 1px solid rgba(16,38,49,.06); box-shadow: var(--shadow); }
 .metric { min-height: 150px; padding: 23px; display: flex; flex-direction: column; }
-.metric--primary { color: var(--white); background: var(--coral); }
+.metric--primary { color: var(--white); background: #bd4c22; }
 .metric span { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
-.metric--primary span, .metric--primary small { color: #ffe6d7; }
+.metric--primary span { color: var(--white); }
 .metric strong { margin: auto 0 2px; font-size: 44px; line-height: 1; letter-spacing: -.05em; }
 .metric small { color: var(--muted); font-size: 11px; }
+.metric--primary small { color: var(--white); font-weight: 700; }
 .panel { margin-top: 20px; padding: 28px; }
 .panel--wide { width: 100%; }
 .panel__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 24px; }
