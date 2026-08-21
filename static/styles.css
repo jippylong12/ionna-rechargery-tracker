@@ -70,6 +70,7 @@ h1 span { color: var(--teal); font-weight: 400; }
 .location-map { height: 440px; background: #dce5e2; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .map-panel__footer { display: flex; justify-content: space-between; gap: 20px; padding: 14px 28px 16px; }
 .map-panel__footer p { margin: 0; }
+.map-panel__footer kbd { display: inline-block; min-width: 19px; padding: 1px 5px; color: var(--ink); background: var(--white); border: 1px solid #cbd4d1; border-bottom-width: 2px; border-radius: 3px; font: inherit; font-weight: 750; text-align: center; }
 .map-fallback { display: grid; height: 100%; place-items: center; padding: 30px; color: var(--muted); background: radial-gradient(circle at 25% 30%, rgba(161,198,194,.45), transparent 38%), #e8edeb; text-align: center; }
 .leaflet-container { font-family: inherit; }
 .leaflet-popup-content-wrapper { border-radius: 2px; box-shadow: 0 16px 42px rgba(16,38,49,.22); }

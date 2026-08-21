@@ -4,6 +4,7 @@ const state = {
   sort: { key: "location", direction: "ascending" },
   map: null,
   mapMarkers: null,
+  mapWheelCleanup: null,
 };
 const $ = (selector) => document.querySelector(selector);
 
@@ -93,9 +94,25 @@ function mapPopup(item) {
     <span class="status status--${escapeHtml(item.status)}">${escapeHtml(statusLabel(item.status))}</span>`;
 }
 
+function mapWheelZoomAllowed(event) {
+  return Boolean(event.metaKey || event.ctrlKey);
+}
+
+function setupModifierWheelZoom(host) {
+  if (!host?.addEventListener) return () => {};
+  const options = { capture: true, passive: true };
+  const handleWheel = (event) => {
+    if (!mapWheelZoomAllowed(event)) event.stopImmediatePropagation();
+  };
+  host.addEventListener("wheel", handleWheel, options);
+  return () => host.removeEventListener("wheel", handleWheel, options);
+}
+
 function showMapFallback(error = null) {
   const host = $("#location-map");
   if (!host) return;
+  if (state.mapWheelCleanup) state.mapWheelCleanup();
+  state.mapWheelCleanup = null;
   if (state.map) {
     try {
       state.map.remove();
@@ -122,9 +139,10 @@ function setupMap() {
   try {
     state.map = L.map(host, {
       minZoom: 3,
-      scrollWheelZoom: false,
+      scrollWheelZoom: true,
       preferCanvas: true,
     });
+    state.mapWheelCleanup = setupModifierWheelZoom(host);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -324,10 +342,12 @@ if (typeof module !== "undefined" && module.exports) {
     compareLocations,
     locationCoordinates,
     mapStatusColor,
+    mapWheelZoomAllowed,
     nextSort,
     renderMap,
     safeExternalUrl,
     setupMap,
+    setupModifierWheelZoom,
     sortValue,
   };
 }

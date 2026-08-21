@@ -5,10 +5,12 @@ const {
   compareLocations,
   locationCoordinates,
   mapStatusColor,
+  mapWheelZoomAllowed,
   nextSort,
   renderMap,
   safeExternalUrl,
   setupMap,
+  setupModifierWheelZoom,
   sortValue,
 } = require("../static/dashboard.js");
 
@@ -63,6 +65,44 @@ test("uses status colors and permits only web location links", () => {
   assert.equal(safeExternalUrl("https://www.ionna.com/rechargery/example/"), "https://www.ionna.com/rechargery/example/");
   assert.equal(safeExternalUrl("javascript:alert(1)"), "");
   assert.equal(safeExternalUrl("not a URL"), "");
+});
+
+test("limits map wheel zoom to Command or Control scrolling", () => {
+  let wheelHandler;
+  let listenerOptions;
+  let removed = false;
+  const host = {
+    addEventListener: (type, handler, options) => {
+      assert.equal(type, "wheel");
+      wheelHandler = handler;
+      listenerOptions = options;
+    },
+    removeEventListener: (type, handler, options) => {
+      assert.equal(type, "wheel");
+      assert.equal(handler, wheelHandler);
+      assert.equal(options, listenerOptions);
+      removed = true;
+    },
+  };
+  const cleanup = setupModifierWheelZoom(host);
+  let regularScrollStopped = false;
+  wheelHandler({
+    metaKey: false,
+    ctrlKey: false,
+    stopImmediatePropagation: () => { regularScrollStopped = true; },
+  });
+  assert.equal(regularScrollStopped, true);
+  assert.deepEqual(listenerOptions, { capture: true, passive: true });
+
+  for (const event of [{ metaKey: true, ctrlKey: false }, { metaKey: false, ctrlKey: true }]) {
+    let modifierScrollStopped = false;
+    wheelHandler({ ...event, stopImmediatePropagation: () => { modifierScrollStopped = true; } });
+    assert.equal(mapWheelZoomAllowed(event), true);
+    assert.equal(modifierScrollStopped, false);
+  }
+
+  cleanup();
+  assert.equal(removed, true);
 });
 
 test("map initialization failures preserve the table fallback", () => {
