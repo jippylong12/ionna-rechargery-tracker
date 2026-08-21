@@ -2,6 +2,8 @@ const state = {
   data: null,
   filteredLocations: [],
   sort: { key: "location", direction: "ascending" },
+  map: null,
+  mapMarkers: null,
 };
 const $ = (selector) => document.querySelector(selector);
 
@@ -10,6 +12,13 @@ const STATUS_SORT_ORDER = {
   coming_soon: 1,
   under_renovation: 2,
   unknown: 3,
+};
+
+const MAP_STATUS_COLORS = {
+  open: "#416d78",
+  coming_soon: "#f0a340",
+  under_renovation: "#ce592b",
+  unknown: "#8d9999",
 };
 
 const escapeHtml = (value) => String(value ?? "")
@@ -52,6 +61,86 @@ function nextSort(current, key) {
   };
 }
 
+function locationCoordinates(item) {
+  if (item.latitude === null || item.latitude === "" || item.longitude === null || item.longitude === "") return null;
+  const latitude = Number(item.latitude);
+  const longitude = Number(item.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+  return [latitude, longitude];
+}
+
+function mapStatusColor(status) {
+  return MAP_STATUS_COLORS[status] || MAP_STATUS_COLORS.unknown;
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+function mapPopup(item) {
+  const href = safeExternalUrl(item.link);
+  const title = href
+    ? `<a class="map-popup__title" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>`
+    : `<strong class="map-popup__title">${escapeHtml(item.title)}</strong>`;
+  return `${title}
+    <span class="map-popup__address">${escapeHtml(item.street)}, ${escapeHtml(item.city)}, ${escapeHtml(item.state)} ${escapeHtml(item.postcode)}</span>
+    <span class="status status--${escapeHtml(item.status)}">${escapeHtml(statusLabel(item.status))}</span>`;
+}
+
+function setupMap() {
+  const host = $("#location-map");
+  if (!host) return;
+  if (typeof L === "undefined") {
+    host.innerHTML = '<div class="map-fallback">Map tiles are unavailable. The location table remains fully usable.</div>';
+    $("#map-location-count").textContent = "Map library unavailable";
+    return;
+  }
+
+  state.map = L.map(host, {
+    minZoom: 3,
+    scrollWheelZoom: false,
+    preferCanvas: true,
+  });
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(state.map);
+  state.mapMarkers = L.layerGroup().addTo(state.map);
+}
+
+function renderMap(locations) {
+  if (!state.map || !state.mapMarkers) return;
+  state.mapMarkers.clearLayers();
+  const bounds = [];
+
+  locations.forEach((item) => {
+    const coordinates = locationCoordinates(item);
+    if (!coordinates) return;
+    bounds.push(coordinates);
+    L.circleMarker(coordinates, {
+      radius: 6,
+      color: "#fffef9",
+      weight: 1.5,
+      fillColor: mapStatusColor(item.status),
+      fillOpacity: 0.92,
+    }).bindPopup(mapPopup(item), { maxWidth: 320 }).addTo(state.mapMarkers);
+  });
+
+  if (bounds.length === 1) state.map.setView(bounds[0], 10, { animate: false });
+  else if (bounds.length > 1) state.map.fitBounds(bounds, { padding: [24, 24], maxZoom: 10, animate: false });
+  else state.map.setView([39.5, -98.35], 4, { animate: false });
+
+  $("#map-location-count").textContent = bounds.length === locations.length
+    ? `${bounds.length} locations mapped from IONNA coordinates`
+    : `${bounds.length} of ${locations.length} locations have mappable coordinates`;
+}
+
 function updateSortHeaders() {
   document.querySelectorAll("[data-sort-key]").forEach((button) => {
     const header = button.closest("th");
@@ -68,7 +157,7 @@ function setupSorting() {
     button.addEventListener("click", () => {
       state.sort = nextSort(state.sort, button.dataset.sortKey);
       updateSortHeaders();
-      renderLocations();
+      renderLocations({ updateMap: false });
     });
   });
   updateSortHeaders();
@@ -137,11 +226,11 @@ function setupFilters(data) {
   $("#state-filter").insertAdjacentHTML("beforeend", states.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join(""));
   $("#type-filter").insertAdjacentHTML("beforeend", types.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join(""));
   ["#search-filter", "#state-filter", "#status-filter", "#type-filter"].forEach((selector) => {
-    $(selector).addEventListener("input", renderLocations);
+    $(selector).addEventListener("input", () => renderLocations());
   });
 }
 
-function renderLocations() {
+function renderLocations({ updateMap = true } = {}) {
   const query = $("#search-filter").value.trim().toLowerCase();
   const selectedState = $("#state-filter").value;
   const status = $("#status-filter").value;
@@ -152,10 +241,15 @@ function renderLocations() {
       && (!status || item.status === status) && (!type || item.type === type);
   }).sort((a, b) => compareLocations(a, b, state.sort));
   state.filteredLocations = filtered;
+  if (updateMap) renderMap(filtered);
   $("#locations-table").innerHTML = filtered.map((item) => {
     const connectors = [[item.nacs_connectors, "NACS"], [item.ccs_connectors, "CCS"]]
       .filter(([count]) => count !== null).map(([count, name]) => `${count} ${name}`).join(" · ") || "—";
-    return `<tr><td><a class="location-name" href="${escapeHtml(item.link)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>
+    const href = safeExternalUrl(item.link);
+    const locationName = href
+      ? `<a class="location-name" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a>`
+      : `<strong class="location-name">${escapeHtml(item.title)}</strong>`;
+    return `<tr><td>${locationName}
       <span class="location-address">${escapeHtml(item.street)}, ${escapeHtml(item.city)}, ${escapeHtml(item.state)} ${escapeHtml(item.postcode)}</span></td>
       <td><span class="status status--${escapeHtml(item.status)}">${escapeHtml(statusLabel(item.status))}</span></td>
       <td>${escapeHtml(item.type)}</td><td>${escapeHtml(connectors)}</td><td>${escapeHtml(item.price_text || "—")}</td>
@@ -190,7 +284,7 @@ async function loadDashboard() {
     }
     state.data = data;
     populateSummary(data); renderHistory(data.history); renderStates(data.states); renderTypes(data.types);
-    setupFilters(data); setupSorting(); renderLocations(); renderEvents(data);
+    setupFilters(data); setupSorting(); setupMap(); renderLocations(); renderEvents(data);
   } catch (error) {
     $("#dashboard-content").innerHTML = `<div class="error-banner"><strong>Dashboard unavailable.</strong> ${escapeHtml(error.message)}</div>`;
     $("#last-updated").textContent = "Local data unavailable";
@@ -200,5 +294,12 @@ async function loadDashboard() {
 if (typeof document !== "undefined") loadDashboard();
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { compareLocations, nextSort, sortValue };
+  module.exports = {
+    compareLocations,
+    locationCoordinates,
+    mapStatusColor,
+    nextSort,
+    safeExternalUrl,
+    sortValue,
+  };
 }

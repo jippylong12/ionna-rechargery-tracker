@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Local analytics for the IONNA Rechargery network" />
     <title>Rechargery Network Watch</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script defer src="{{ url_for('static', filename='dashboard.js') }}"></script>
   </head>
   <body>
@@ -36,6 +38,22 @@
           <article class="metric"><span>Coming soon</span><strong id="metric-coming">—</strong><small>Explicitly marked by IONNA</small></article>
           <article class="metric"><span>Newly observed</span><strong id="metric-new">—</strong><small id="metric-new-window">After baseline</small></article>
           <article class="metric"><span>Observed openings</span><strong id="metric-openings">—</strong><small>Status transitions captured</small></article>
+        </section>
+
+        <section class="panel panel--wide map-panel">
+          <div class="panel__head map-panel__head">
+            <div><p class="eyebrow">NETWORK FOOTPRINT</p><h2>Every Rechargery, in context</h2></div>
+            <div class="map-legend" aria-label="Map status legend">
+              <span><i class="map-key map-key--open"></i>Open</span>
+              <span><i class="map-key map-key--soon"></i>Coming soon</span>
+              <span><i class="map-key map-key--renovation"></i>Renovation</span>
+            </div>
+          </div>
+          <div id="location-map" class="location-map" role="region" aria-label="Interactive map of IONNA Rechargery locations"></div>
+          <div class="map-panel__footer">
+            <p id="map-location-count" class="fine-print">Preparing location map…</p>
+            <p class="fine-print">The map follows the Location Explorer filters. Zoom with the controls or pinch gesture.</p>
+          </div>
         </section>
 
         <section class="panel panel--wide">
