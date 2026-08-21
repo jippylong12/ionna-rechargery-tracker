@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Local analytics for the IONNA Rechargery network" />
+    <title>Rechargery Network Watch</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    <script defer src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__glow"></div>
+      <nav class="nav wrap">
+        <div class="brand"><span class="brand__bolt">ϟ</span> RECHARGERY WATCH</div>
+        <div class="nav__status"><span class="live-dot"></span><span id="last-updated">Loading local data…</span></div>
+      </nav>
+      <div class="hero__content wrap">
+        <p class="eyebrow">IONNA NETWORK INTELLIGENCE</p>
+        <h1>See the network<br /><span>take shape.</span></h1>
+        <p class="hero__copy">A local, observation-based view of every Rechargery—open, planned, and changing over time.</p>
+      </div>
+    </header>
+
+    <main class="wrap dashboard">
+      <section id="empty-state" class="empty-state hidden">
+        <p class="eyebrow">NO BASELINE YET</p>
+        <h2>Collect the first snapshot.</h2>
+        <code>python scrape.py</code>
+      </section>
+
+      <div id="dashboard-content">
+        <section class="metric-grid" aria-label="Network summary">
+          <article class="metric metric--primary"><span>Total locations</span><strong id="metric-total">—</strong><small id="metric-states">— states</small></article>
+          <article class="metric"><span>Open now</span><strong id="metric-open">—</strong><small id="metric-open-share">— of network</small></article>
+          <article class="metric"><span>Coming soon</span><strong id="metric-coming">—</strong><small>Explicitly marked by IONNA</small></article>
+          <article class="metric"><span>Newly observed</span><strong id="metric-new">—</strong><small id="metric-new-window">After baseline</small></article>
+          <article class="metric"><span>Observed openings</span><strong id="metric-openings">—</strong><small>Status transitions captured</small></article>
+        </section>
+
+        <section class="panel panel--wide">
+          <div class="panel__head">
+            <div><p class="eyebrow">NETWORK TRAJECTORY</p><h2>Growth by observation</h2></div>
+            <div class="legend"><span><i class="key key--open"></i>Open</span><span><i class="key key--soon"></i>Coming soon</span><span><i class="key key--total"></i>Total</span></div>
+          </div>
+          <div id="history-chart" class="history-chart" role="img" aria-label="Location count history"></div>
+          <p id="history-note" class="fine-print"></p>
+        </section>
+
+        <div class="two-column">
+          <section class="panel">
+            <div class="panel__head"><div><p class="eyebrow">GEOGRAPHY</p><h2>States</h2></div><span class="panel__hint">Open / planned</span></div>
+            <div id="state-bars" class="bar-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel__head"><div><p class="eyebrow">NETWORK MIX</p><h2>Rechargery types</h2></div></div>
+            <div id="type-breakdown" class="type-breakdown"></div>
+          </section>
+        </div>
+
+        <section class="panel panel--wide">
+          <div class="panel__head panel__head--filters">
+            <div><p class="eyebrow">LOCATION EXPLORER</p><h2>Every site, made legible</h2></div>
+            <div class="filters">
+              <input id="search-filter" type="search" placeholder="Search city, address, or name" aria-label="Search locations" />
+              <select id="state-filter" aria-label="Filter by state"><option value="">All states</option></select>
+              <select id="status-filter" aria-label="Filter by status"><option value="">All statuses</option><option value="open">Open</option><option value="coming_soon">Coming soon</option><option value="under_renovation">Under renovation</option><option value="unknown">Unknown</option></select>
+              <select id="type-filter" aria-label="Filter by type"><option value="">All types</option></select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Location</th><th>Status</th><th>Type</th><th>Connectors</th><th>Price</th><th>First seen</th></tr></thead>
+              <tbody id="locations-table"></tbody>
+            </table>
+          </div>
+          <p id="location-count" class="fine-print"></p>
+        </section>
+
+        <section class="panel panel--wide">
+          <div class="panel__head"><div><p class="eyebrow">RECENT SIGNALS</p><h2>What changed</h2></div><span id="recent-window" class="panel__hint"></span></div>
+          <div id="recent-events" class="event-list"></div>
+        </section>
+
+        <section class="method-note">
+          <p class="eyebrow">HOW TO READ THIS</p>
+          <p>IONNA does not include launch dates in its map data. The first collection is a neutral baseline. “Newly observed” means first seen after that baseline, and “observed openings” means this tracker saw a site move from a non-open status to open. These are observation dates—not claimed construction or opening dates.</p>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>
