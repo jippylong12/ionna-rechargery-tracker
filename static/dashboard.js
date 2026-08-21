@@ -280,7 +280,8 @@ function renderLocations({ updateMap = true } = {}) {
       <td>${escapeHtml(item.type)}</td><td>${escapeHtml(connectors)}</td><td>${escapeHtml(item.price_text || "—")}</td>
       <td>${formatDate(item.first_seen_at)}</td></tr>`;
   }).join("");
-  $("#location-count").textContent = `Showing ${filtered.length} of ${state.data.locations.length} active locations.`;
+  const visibleViews = state.map && state.mapMarkers ? "the map and table" : "the table";
+  $("#location-count").textContent = `Showing ${filtered.length} of ${state.data.locations.length} active locations in ${visibleViews}.`;
 }
 
 function renderEvents(data) {

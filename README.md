@@ -2,7 +2,7 @@
 
 A local, history-aware tracker for the [IONNA Rechargery map](https://www.ionna.com/rechargeries/find-a-rechargery/). It makes one direct HTTP request, extracts the `window.allLocations` JSON embedded in the page, stores current and historical observations in local MongoDB, and serves a Flask dashboard.
 
-The dashboard includes a filter-aware Leaflet map using the coordinates IONNA publishes for each location. It loads only the OpenStreetMap tiles needed for the visible viewport, with attribution shown on the map; no geocoding service or API key is required.
+The Location Explorer keeps its filter-aware Leaflet map and sortable table synchronized, so both always show the same locations. It uses the coordinates IONNA publishes for each location and loads only the OpenStreetMap tiles needed for the visible viewport, with attribution shown on the map; no geocoding service or API key is required.
 
 The direct request is intentional: browser network inspection showed that IONNA embeds all location data in the page rather than loading it from a separate locations API. Google Maps requests only render the map. An optional Playwright fallback is available if IONNA later changes the page to require rendering.
 

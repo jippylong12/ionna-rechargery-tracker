@@ -40,23 +40,6 @@
           <article class="metric"><span>Observed openings</span><strong id="metric-openings">—</strong><small>Status transitions captured</small></article>
         </section>
 
-        <section class="panel panel--wide map-panel">
-          <div class="panel__head map-panel__head">
-            <div><p class="eyebrow">NETWORK FOOTPRINT</p><h2>Every Rechargery, in context</h2></div>
-            <div class="map-legend" aria-label="Map status legend">
-              <span><i class="map-key map-key--open" aria-hidden="true"></i>Open</span>
-              <span><i class="map-key map-key--soon" aria-hidden="true"></i>Coming soon</span>
-              <span><i class="map-key map-key--renovation" aria-hidden="true"></i>Renovation</span>
-              <span><i class="map-key map-key--unknown" aria-hidden="true"></i>Unknown</span>
-            </div>
-          </div>
-          <div id="location-map" class="location-map" role="region" aria-label="Interactive map of IONNA Rechargery locations"></div>
-          <div class="map-panel__footer">
-            <p id="map-location-count" class="fine-print" aria-live="polite">Preparing location map…</p>
-            <p class="fine-print">The map follows the Location Explorer filters. Zoom with the controls or pinch gesture.</p>
-          </div>
-        </section>
-
         <section class="panel panel--wide">
           <div class="panel__head">
             <div><p class="eyebrow">NETWORK TRAJECTORY</p><h2>Growth by observation</h2></div>
@@ -77,15 +60,39 @@
           </section>
         </div>
 
-        <section class="panel panel--wide">
+        <section class="panel panel--wide explorer-panel">
           <div class="panel__head panel__head--filters">
-            <div><p class="eyebrow">LOCATION EXPLORER</p><h2>Every site, made legible</h2></div>
+            <div>
+              <p class="eyebrow">LOCATION EXPLORER</p>
+              <h2>Map and table, one filtered view</h2>
+              <p class="panel__intro">Search or filter once. Both views update together.</p>
+            </div>
             <div class="filters">
               <input id="search-filter" type="search" placeholder="Search city, address, or name" aria-label="Search locations" />
               <select id="state-filter" aria-label="Filter by state"><option value="">All states</option></select>
               <select id="status-filter" aria-label="Filter by status"><option value="">All statuses</option><option value="open">Open</option><option value="coming_soon">Coming soon</option><option value="under_renovation">Under renovation</option><option value="unknown">Unknown</option></select>
               <select id="type-filter" aria-label="Filter by type"><option value="">All types</option></select>
             </div>
+          </div>
+          <div class="explorer-map">
+            <div class="explorer-view-head">
+              <div><p class="eyebrow explorer-view-label">MAP VIEW</p><h3>Network footprint</h3></div>
+              <div class="map-legend" aria-label="Map status legend">
+                <span><i class="map-key map-key--open" aria-hidden="true"></i>Open</span>
+                <span><i class="map-key map-key--soon" aria-hidden="true"></i>Coming soon</span>
+                <span><i class="map-key map-key--renovation" aria-hidden="true"></i>Renovation</span>
+                <span><i class="map-key map-key--unknown" aria-hidden="true"></i>Unknown</span>
+              </div>
+            </div>
+            <div id="location-map" class="location-map" role="region" aria-label="Interactive map of filtered IONNA Rechargery locations"></div>
+            <div class="map-panel__footer">
+              <p id="map-location-count" class="fine-print" aria-live="polite">Preparing location map…</p>
+              <p class="fine-print">Zoom with the controls or pinch gesture.</p>
+            </div>
+          </div>
+          <div class="explorer-table-head">
+            <div><p class="eyebrow explorer-view-label">TABLE VIEW</p><h3>Matching locations</h3></div>
+            <p id="location-count" class="fine-print" aria-live="polite"></p>
           </div>
           <div class="table-scroll">
             <table>
@@ -98,7 +105,6 @@
               <tbody id="locations-table"></tbody>
             </table>
           </div>
-          <p id="location-count" class="fine-print"></p>
         </section>
 
         <section class="panel panel--wide">
