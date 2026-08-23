@@ -11,6 +11,47 @@ from ionna_tracker.parser import LocationParseError, extract_locations, normaliz
 from ionna_tracker.storage import connect, ingest
 
 
+def _value_for_log(value: object) -> str:
+    if value is None:
+        return "—"
+    if isinstance(value, (list, dict)):
+        return ", ".join(map(str, value))
+    if isinstance(value, float):
+        return f"{value:g}"
+    return str(value)
+
+
+def _print_run_changes(run: dict[str, object]) -> None:
+    changes = run.get("changes", {})
+    baseline = run.get("baseline", False)
+    if baseline:
+        return
+    discovered = list(changes.get("discovered", []))
+    if discovered:
+        print("Discovered entries:")
+        for entry in discovered:
+            location = _value_for_log(entry.get("title"))
+            status = _value_for_log(entry.get("status"))
+            state = _value_for_log(entry.get("state"))
+            print(f"  + {location} ({status}, {state})")
+
+    updated = list(changes.get("updated", []))
+    if updated:
+        print("Updated entries:")
+        for entry in updated:
+            location = _value_for_log(entry.get("title"))
+            old_status = _value_for_log(entry.get("status_from"))
+            new_status = _value_for_log(entry.get("status_to"))
+            print(f"  ~ {location} ({old_status} → {new_status})")
+            field_changes = list(entry.get("field_changes", []))
+            for change in field_changes:
+                field = _value_for_log(change.get("field"))
+                before = _value_for_log(change.get("from"))
+                after = _value_for_log(change.get("to"))
+                if field != "status":
+                    print(f"      {field}: {before} -> {after}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Collect IONNA Rechargery locations")
     parser.add_argument(
@@ -75,6 +116,7 @@ def main() -> int:
                 f"Run changes: {run['discovered']} new, {run['changed']} updated, "
                 f"{run['observed_openings']} observed openings, {run['missing']} missing."
             )
+            _print_run_changes(run)
         return 0
     except Exception as exc:
         print(f"Collection failed: {exc}", file=sys.stderr)

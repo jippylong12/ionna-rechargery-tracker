@@ -136,6 +136,27 @@ class StorageLifecycleIntegrationTests(unittest.TestCase):
             event_types,
             Counter({"discovered": 1, "status_changed": 1, "observed_open": 1}),
         )
+        self.assertEqual(follow_up["changes"]["discovered"], [
+            {
+                "source_id": "3",
+                "title": "New Renovation",
+                "city": "Test City",
+                "state": "AZ",
+                "type": "Rechargery Relay",
+                "status": "under_renovation",
+            }
+        ])
+        self.assertEqual(
+            len(follow_up["changes"]["updated"]),
+            1,
+        )
+        updated_entry = follow_up["changes"]["updated"][0]
+        self.assertEqual(updated_entry["source_id"], "2")
+        self.assertEqual(updated_entry["status_from"], "coming_soon")
+        self.assertEqual(updated_entry["status_to"], "open")
+        changed_fields = {item["field"] for item in updated_entry["field_changes"]}
+        self.assertIn("note", changed_fields)
+        self.assertIn("status", changed_fields)
         self.assertEqual(self.db.runs.count_documents({}), 2)
         self.assertEqual(self.db.observations.count_documents({}), 4)
         self.assertEqual(self.db.locations.count_documents({}), 3)
@@ -164,5 +185,10 @@ class StorageLifecycleIntegrationTests(unittest.TestCase):
             },
         )
         self.assertEqual(len(dashboard["history"]), 2)
-        self.assertEqual(len(dashboard["recent_changes"]), 3)
+        self.assertEqual(len(dashboard["recent_changes"]), 4)
+        recent_types = Counter(item["event_type"] for item in dashboard["recent_changes"] if "event_type" in item)
+        self.assertEqual(
+            recent_types,
+            Counter({"discovered": 1, "status_changed": 1, "observed_open": 1, "updated": 1}),
+        )
         self.assertEqual(dashboard["monthly_openings"][0]["count"], 1)

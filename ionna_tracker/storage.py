@@ -10,6 +10,28 @@ from pymongo.database import Database
 
 from .parser import payload_hash
 
+TRACKED_FIELDS = (
+    "title",
+    "street",
+    "city",
+    "state",
+    "postcode",
+    "country",
+    "note",
+    "status",
+    "type",
+    "speed_kw",
+    "price_text",
+    "price_per_kwh",
+    "nacs_connectors",
+    "ccs_connectors",
+    "amenities",
+    "latitude",
+    "longitude",
+    "link",
+    "image_url",
+)
+
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -46,6 +68,61 @@ def _counts(locations: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _field_changes(previous: dict[str, Any], location: dict[str, Any]) -> list[dict[str, Any]]:
+    changes = []
+    for field in TRACKED_FIELDS:
+        previous_value = previous.get(field)
+        current_value = location.get(field)
+        if previous_value != current_value:
+            changes.append(
+                {
+                    "field": field,
+                    "from": previous_value,
+                    "to": current_value,
+                }
+            )
+    return changes
+
+
+def _run_changes_for_update(
+    location: dict[str, Any],
+    previous: dict[str, Any],
+    field_changes: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "source_id": location["source_id"],
+        "title": location["title"],
+        "city": location["city"],
+        "state": location["state"],
+        "type": location["type"],
+        "status_from": previous.get("status"),
+        "status_to": location["status"],
+        "field_changes": field_changes,
+        "change_count": len(field_changes),
+    }
+
+
+def _run_changes_for_discovered(location: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source_id": location["source_id"],
+        "title": location["title"],
+        "city": location["city"],
+        "state": location["state"],
+        "type": location["type"],
+        "status": location["status"],
+    }
+
+
+def _run_changes_for_missing(doc: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source_id": doc["source_id"],
+        "title": doc["title"],
+        "city": doc["city"],
+        "state": doc["state"],
+        "type": doc["type"],
+    }
+
+
 def ingest(
     db: Database,
     locations: list[dict[str, Any]],
@@ -66,6 +143,8 @@ def ingest(
     location_ops = []
     observation_ops = []
     event_ops = []
+    discovered_entries = []
+    updated_entries = []
     changed = 0
     discovered = 0
     observed_openings = 0
@@ -90,6 +169,7 @@ def ingest(
             discovered += 1
             set_fields["status_changed_at"] = fetched_at
             if not baseline:
+                discovered_entries.append(_run_changes_for_discovered(location))
                 event_ops.append(
                     InsertOne(
                         {
@@ -104,8 +184,14 @@ def ingest(
                     )
                 )
         else:
+            field_changes = _field_changes(previous, location)
             if previous.get("fingerprint") != location["fingerprint"]:
                 changed += 1
+                if field_changes:
+                    updated_entries.append(
+                        _run_changes_for_update(location, previous, field_changes)
+                    )
+
             old_status = previous.get("status")
             new_status = location["status"]
             if old_status != new_status:
@@ -186,6 +272,24 @@ def ingest(
             }
         },
     )
+    missing_entries = [
+        _run_changes_for_missing(item)
+        for item in db.locations.find(
+            {
+                "source_id": {"$nin": source_ids},
+                "active": False,
+                "last_missing_run_id": run_id,
+            },
+            {
+                "_id": False,
+                "source_id": True,
+                "title": True,
+                "city": True,
+                "state": True,
+                "type": True,
+            },
+        )
+    ]
 
     counts = _counts(locations)
     run = {
@@ -201,6 +305,11 @@ def ingest(
         "changed": changed,
         "observed_openings": observed_openings,
         "missing": missing_result.modified_count,
+        "changes": {
+            "discovered": discovered_entries if not baseline else [],
+            "updated": updated_entries,
+            "missing": missing_entries,
+        },
     }
     db.runs.insert_one(run)
     run.pop("_id", None)

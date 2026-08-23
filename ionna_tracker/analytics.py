@@ -18,6 +18,42 @@ def _iso(value: Any) -> str | None:
     return None
 
 
+def _changes_to_events(run: dict[str, Any]) -> list[dict[str, Any]]:
+    changes = run.get("changes", {})
+    if not isinstance(changes, dict):
+        return []
+    occurred_at = run.get("fetched_at")
+    run_id = run.get("run_id")
+    events = []
+    for change in changes.get("updated", []) or []:
+        if not isinstance(change, dict):
+            continue
+        field_changes = change.get("field_changes") or []
+        non_status_changes = [
+            diff
+            for diff in field_changes
+            if isinstance(diff, dict) and diff.get("field") != "status"
+        ]
+        if not non_status_changes:
+            continue
+        events.append(
+            {
+                "event_type": "updated",
+                "source_id": change.get("source_id"),
+                "title": change.get("title"),
+                "state": change.get("state"),
+                "city": change.get("city"),
+                "from_status": change.get("status_from"),
+                "to_status": change.get("status_to"),
+                "changed_fields": non_status_changes,
+                "changed_count": len(non_status_changes),
+                "occurred_at": occurred_at,
+                "run_id": run_id,
+            }
+        )
+    return events
+
+
 def _location_json(item: dict[str, Any]) -> dict[str, Any]:
     keys = (
         "source_id",
@@ -77,6 +113,10 @@ def dashboard_data(db: Database, recent_days: int = 7) -> dict[str, Any]:
         .sort("occurred_at", -1)
         .limit(100)
     )
+    run_events = []
+    for run in runs:
+        if run.get("fetched_at", datetime.min.replace(tzinfo=timezone.utc)) >= cutoff:
+            run_events.extend(_changes_to_events(run))
     all_open_events = list(
         db.events.find({"event_type": "observed_open"}, {"_id": False}).sort(
             "occurred_at", 1
@@ -111,7 +151,11 @@ def dashboard_data(db: Database, recent_days: int = 7) -> dict[str, Any]:
             **{key: value for key, value in event.items() if key != "occurred_at"},
             "occurred_at": _iso(event.get("occurred_at")),
         }
-        for event in recent_events
+        for event in sorted(
+            [*recent_events, *run_events],
+            key=lambda event_item: event_item.get("occurred_at", datetime.min.replace(tzinfo=timezone.utc)),
+            reverse=True,
+        )[:100]
     ]
 
     return {

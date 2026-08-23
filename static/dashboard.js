@@ -37,6 +37,32 @@ const statusLabel = (status) => ({
   open: "Open", coming_soon: "Coming soon", under_renovation: "Renovation", unknown: "Unknown",
 }[status] || status);
 
+const fieldLabel = (field) => ({
+  title: "title",
+  street: "street",
+  city: "city",
+  state: "state",
+  postcode: "zip",
+  country: "country",
+  note: "note",
+  status: "status",
+  type: "type",
+  speed_kw: "speed",
+  price_text: "price",
+  price_per_kwh: "price/kWh",
+  nacs_connectors: "NACS",
+  ccs_connectors: "CCS",
+  amenities: "amenities",
+  latitude: "lat",
+  longitude: "lon",
+  link: "link",
+  image_url: "image",
+}[field] || field);
+
+const renderChangeValue = (value) => (
+  value === null || value === undefined ? "—" : String(value)
+);
+
 const formatDate = (value, options = {}) => value
   ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: options.time ? "short" : undefined }).format(new Date(value))
   : "—";
@@ -332,8 +358,21 @@ function renderEvents(data) {
     return;
   }
   host.innerHTML = data.recent_changes.map((event) => {
-    const kind = event.event_type === "discovered" ? "New location" : event.event_type === "observed_open" ? "Observed opening" : "Status changed";
-    const detail = event.event_type === "discovered" ? `${statusLabel(event.to_status)} in ${event.state}` : `${statusLabel(event.from_status)} → ${statusLabel(event.to_status)}`;
+    const kind = event.event_type === "discovered"
+      ? "New location"
+      : event.event_type === "observed_open"
+        ? "Observed opening"
+        : event.event_type === "updated"
+          ? "Updated details"
+          : "Status changed";
+    const detail = event.event_type === "discovered"
+      ? `${statusLabel(event.to_status)} in ${event.state}`
+      : event.event_type === "updated"
+        ? `${(event.changed_fields || [])
+            .slice(0, 3)
+            .map((item) => `${fieldLabel(item.field)}: ${renderChangeValue(item.from)} → ${renderChangeValue(item.to)}`)
+            .join(" · ")}${(event.changed_count || 0) > 3 ? ` · +${(event.changed_count || 0) - 3} more` : ""}`.trim() || "Location details changed"
+        : `${statusLabel(event.from_status)} → ${statusLabel(event.to_status)}`;
     return `<article class="event"><span class="event__kind">${kind}</span><div><strong>${escapeHtml(event.title)}</strong><br><span class="panel__hint">${escapeHtml(detail)}</span></div><time class="event__time">${formatDate(event.occurred_at, { time: true })}</time></article>`;
   }).join("");
 }
