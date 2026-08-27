@@ -3,16 +3,16 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.marcus.ionna-rechargery-tracker</string>
+  <string>com.ionna.rechargery-tracker</string>
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker/.venv/bin/python</string>
-    <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker/scrape.py</string>
+    <string>__PYTHON_BIN__</string>
+    <string>__PROJECT_DIR__/scrape.py</string>
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker</string>
+  <string>__PROJECT_DIR__</string>
 
   <key>StartCalendarInterval</key>
   <dict>
@@ -32,8 +32,8 @@
   <true/>
 
   <key>StandardOutPath</key>
-  <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker/logs/nightly.log</string>
+  <string>__LOG_DIR__/nightly.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/marcus.salinas/Programming/Personal/ionna-rechargery-tracker/logs/nightly-error.log</string>
+  <string>__LOG_DIR__/nightly-error.log</string>
 </dict>
 </plist>

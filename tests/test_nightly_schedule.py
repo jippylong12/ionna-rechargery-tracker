@@ -11,7 +11,7 @@ CONTROL_SCRIPT = PROJECT_ROOT / "bin" / "nightly-schedule"
 SOURCE_PLIST = (
     PROJECT_ROOT
     / "launchd"
-    / "com.marcus.ionna-rechargery-tracker.plist"
+    / "com.ionna.rechargery-tracker.plist"
 )
 
 
@@ -62,23 +62,18 @@ esac
             check=False,
         )
 
-    def test_plist_runs_once_daily_with_project_environment(self):
+    def test_plist_template_configuration(self):
         with SOURCE_PLIST.open("rb") as plist_file:
             configuration = plistlib.load(plist_file)
 
         self.assertEqual(
-            configuration["Label"], "com.marcus.ionna-rechargery-tracker"
+            configuration["Label"], "com.ionna.rechargery-tracker"
         )
         self.assertEqual(
             configuration["StartCalendarInterval"], {"Hour": 3, "Minute": 0}
         )
         self.assertFalse(configuration["RunAtLoad"])
         self.assertFalse(configuration["KeepAlive"])
-        self.assertEqual(
-            Path(configuration["ProgramArguments"][0]),
-            PROJECT_ROOT / ".venv" / "bin" / "python",
-        )
-        self.assertEqual(Path(configuration["WorkingDirectory"]), PROJECT_ROOT)
 
     def test_on_run_status_and_off_lifecycle(self):
         status = self.run_control("status")
@@ -92,10 +87,28 @@ esac
             self.home
             / "Library"
             / "LaunchAgents"
-            / "com.marcus.ionna-rechargery-tracker.plist"
+            / "com.ionna.rechargery-tracker.plist"
         )
         self.assertTrue(installed_plist.exists())
         self.assertTrue(self.launchctl_state.exists())
+
+        # Verify that the installed plist has resolved real project paths
+        with installed_plist.open("rb") as plist_file:
+            installed_config = plistlib.load(plist_file)
+        self.assertEqual(
+            installed_config["Label"], "com.ionna.rechargery-tracker"
+        )
+        self.assertEqual(
+            Path(installed_config["WorkingDirectory"]), PROJECT_ROOT
+        )
+        self.assertEqual(
+            Path(installed_config["ProgramArguments"][1]),
+            PROJECT_ROOT / "scrape.py",
+        )
+        self.assertEqual(
+            Path(installed_config["StandardOutPath"]),
+            PROJECT_ROOT / "logs" / "nightly.log",
+        )
 
         status = self.run_control("status")
         self.assertIn("ON", status.stdout)

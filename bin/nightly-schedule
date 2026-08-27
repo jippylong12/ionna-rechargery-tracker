@@ -1,13 +1,14 @@
 #!/bin/zsh
 set -euo pipefail
 
-readonly LABEL="com.marcus.ionna-rechargery-tracker"
+readonly LABEL="com.ionna.rechargery-tracker"
 readonly SCRIPT_DIR="${0:A:h}"
 readonly PROJECT_DIR="${SCRIPT_DIR:h}"
 readonly SOURCE_PLIST="${PROJECT_DIR}/launchd/${LABEL}.plist"
 readonly INSTALLED_PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 readonly DOMAIN="gui/$(id -u)"
 readonly LOG_DIR="${PROJECT_DIR}/logs"
+readonly PYTHON_BIN="${PROJECT_DIR}/.venv/bin/python"
 
 usage() {
   echo "Usage: bin/nightly-schedule {on|off|status|run|logs}"
@@ -17,13 +18,25 @@ is_loaded() {
   launchctl print "${DOMAIN}/${LABEL}" >/dev/null 2>&1
 }
 
+generate_plist() {
+  local py_bin="${PYTHON_BIN}"
+  if [[ ! -x "${py_bin}" ]]; then
+    py_bin="$(which python3)"
+  fi
+  sed \
+    -e "s|__PYTHON_BIN__|${py_bin}|g" \
+    -e "s|__PROJECT_DIR__|${PROJECT_DIR}|g" \
+    -e "s|__LOG_DIR__|${LOG_DIR}|g" \
+    "${SOURCE_PLIST}" > "${INSTALLED_PLIST}"
+}
+
 case "${1:-}" in
   on)
     mkdir -p "${LOG_DIR}" "${HOME}/Library/LaunchAgents"
     if is_loaded; then
       launchctl bootout "${DOMAIN}/${LABEL}"
     fi
-    cp "${SOURCE_PLIST}" "${INSTALLED_PLIST}"
+    generate_plist
     launchctl bootstrap "${DOMAIN}" "${INSTALLED_PLIST}"
     echo "Nightly IONNA collection is ON — daily at 3:00 AM local time."
     ;;
