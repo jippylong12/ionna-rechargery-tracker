@@ -1,3 +1,13 @@
+/**
+ * IONNA Rechargery Tracker — Interactive Web Dashboard Client
+ *
+ * Manages:
+ * - Single-page dashboard state (data payload, active filters, sorting).
+ * - Leaflet map initialization, custom marker rendering, and synchronized viewports.
+ * - Dynamic SVG timeseries history chart rendering.
+ * - Real-time client-side search, multi-factor filtering, and sortable tables.
+ */
+
 const state = {
   data: null,
   filteredLocations: [],
@@ -6,8 +16,10 @@ const state = {
   mapMarkers: null,
   mapWheelCleanup: null,
 };
+
 const $ = (selector) => document.querySelector(selector);
 
+// Operational status sorting priority
 const STATUS_SORT_ORDER = {
   open: 0,
   coming_soon: 1,
@@ -15,6 +27,7 @@ const STATUS_SORT_ORDER = {
   unknown: 3,
 };
 
+// Distinct map marker colors for operational status
 const MAP_STATUS_COLORS = {
   open: "#416d78",
   coming_soon: "#f0a340",
@@ -22,6 +35,7 @@ const MAP_STATUS_COLORS = {
   unknown: "#8d9999",
 };
 
+// Shape mapping for Rechargery station types
 const MAP_TYPE_SHAPES = {
   "Rechargery": "circle",
   "Rechargery @": "square",
@@ -29,14 +43,29 @@ const MAP_TYPE_SHAPES = {
   "Rechargery Relay": "triangle",
 };
 
+/**
+ * Escape HTML special characters to prevent XSS injection.
+ * @param {string|number|null} value
+ * @returns {string} Escaped string.
+ */
 const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
   .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 
+/**
+ * Return user-friendly label for an operational status code.
+ * @param {string} status
+ * @returns {string}
+ */
 const statusLabel = (status) => ({
   open: "Open", coming_soon: "Coming soon", under_renovation: "Renovation", unknown: "Unknown",
 }[status] || status);
 
+/**
+ * Return human-readable label for a tracked location property.
+ * @param {string} field
+ * @returns {string}
+ */
 const fieldLabel = (field) => ({
   title: "title",
   street: "street",
@@ -59,20 +88,44 @@ const fieldLabel = (field) => ({
   image_url: "image",
 }[field] || field);
 
+/**
+ * Format a nullable field diff value for event descriptions.
+ * @param {any} value
+ * @returns {string}
+ */
 const renderChangeValue = (value) => (
   value === null || value === undefined ? "—" : String(value)
 );
 
+/**
+ * Format date string into locale date and optional time.
+ * @param {string} value
+ * @param {{ time?: boolean }} options
+ * @returns {string}
+ */
 const formatDate = (value, options = {}) => value
   ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: options.time ? "short" : undefined }).format(new Date(value))
   : "—";
 
+/**
+ * Extract comparable sort value for a station item based on active column.
+ * @param {object} item
+ * @param {string} key
+ * @returns {string|number}
+ */
 function sortValue(item, key) {
   if (key === "status") return STATUS_SORT_ORDER[item.status] ?? 99;
   if (key === "type") return item.type || "";
   return item.title || "";
 }
 
+/**
+ * Compare two station objects based on current sort settings with secondary fallbacks.
+ * @param {object} a
+ * @param {object} b
+ * @param {{ key: string, direction: string }} sort
+ * @returns {number}
+ */
 function compareLocations(a, b, sort) {
   const left = sortValue(a, sort.key);
   const right = sortValue(b, sort.key);
@@ -86,6 +139,12 @@ function compareLocations(a, b, sort) {
     || (a.title || "").localeCompare(b.title || "");
 }
 
+/**
+ * Cycle sort direction or toggle column.
+ * @param {{ key: string, direction: string }} current
+ * @param {string} key
+ * @returns {{ key: string, direction: string }}
+ */
 function nextSort(current, key) {
   return {
     key,
@@ -95,6 +154,11 @@ function nextSort(current, key) {
   };
 }
 
+/**
+ * Validate and extract latitude/longitude coordinates.
+ * @param {object} item
+ * @returns {[number, number]|null}
+ */
 function locationCoordinates(item) {
   if (item.latitude === null || item.latitude === "" || item.longitude === null || item.longitude === "") return null;
   const latitude = Number(item.latitude);
@@ -112,6 +176,11 @@ function mapTypeShape(type) {
   return MAP_TYPE_SHAPES[type] || "pentagon";
 }
 
+/**
+ * Generate a custom Leaflet HTML divIcon matching status color and type shape.
+ * @param {object} item
+ * @returns {L.DivIcon}
+ */
 function mapMarkerIcon(item) {
   const shape = mapTypeShape(item.type);
   return L.divIcon({
@@ -123,6 +192,11 @@ function mapMarkerIcon(item) {
   });
 }
 
+/**
+ * Ensure URL is a safe HTTP/HTTPS link.
+ * @param {string} value
+ * @returns {string}
+ */
 function safeExternalUrl(value) {
   try {
     const url = new URL(value);
@@ -132,6 +206,11 @@ function safeExternalUrl(value) {
   }
 }
 
+/**
+ * Render popup HTML content for a map marker.
+ * @param {object} item
+ * @returns {string}
+ */
 function mapPopup(item) {
   const href = safeExternalUrl(item.link);
   const title = href
@@ -147,6 +226,11 @@ function mapWheelZoomAllowed(event) {
   return Boolean(event.metaKey || event.ctrlKey);
 }
 
+/**
+ * Require Command/Ctrl key for wheel zooming so page scrolling is not trapped.
+ * @param {HTMLElement} host
+ * @returns {Function} Cleanup function.
+ */
 function setupModifierWheelZoom(host) {
   if (!host?.addEventListener) return () => {};
   const options = { capture: true, passive: true };
@@ -157,6 +241,10 @@ function setupModifierWheelZoom(host) {
   return () => host.removeEventListener("wheel", handleWheel, options);
 }
 
+/**
+ * Fallback handler if Leaflet or map tiles cannot be loaded.
+ * @param {Error|null} error
+ */
 function showMapFallback(error = null) {
   const host = $("#location-map");
   if (!host) return;
@@ -177,6 +265,9 @@ function showMapFallback(error = null) {
   if (error) console.warn("Location map unavailable", error);
 }
 
+/**
+ * Initialize the Leaflet map with OpenStreetMap tiles.
+ */
 function setupMap() {
   const host = $("#location-map");
   if (!host) return;
@@ -202,6 +293,10 @@ function setupMap() {
   }
 }
 
+/**
+ * Render station markers on the Leaflet map and fit bounds to filtered locations.
+ * @param {Array<object>} locations
+ */
 function renderMap(locations) {
   if (!state.map || !state.mapMarkers) return;
   try {
@@ -254,6 +349,10 @@ function setupSorting() {
   updateSortHeaders();
 }
 
+/**
+ * Populate top summary KPI metrics.
+ * @param {object} data
+ */
 function populateSummary(data) {
   const s = data.summary;
   $("#metric-total").textContent = s.total.toLocaleString();
@@ -267,6 +366,10 @@ function populateSummary(data) {
   $("#last-updated").textContent = `Last collected ${formatDate(data.last_run?.fetched_at, { time: true })}`;
 }
 
+/**
+ * Render SVG network history timeseries line chart.
+ * @param {Array<object>} history
+ */
 function renderHistory(history) {
   const host = $("#history-chart");
   if (!history.length) { host.innerHTML = '<div class="no-events">No observations yet.</div>'; return; }
@@ -293,6 +396,10 @@ function renderHistory(history) {
     : `${history.length} observations shown. Dates reflect collection time.`;
 }
 
+/**
+ * Render horizontal distribution bars by state.
+ * @param {Array<object>} rows
+ */
 function renderStates(rows) {
   const max = Math.max(1, ...rows.map((row) => row.total));
   $("#state-bars").innerHTML = rows.map((row) => `<div class="bar-row" title="${row.open} open, ${row.coming_soon} coming soon">
@@ -304,6 +411,10 @@ function renderStates(rows) {
     </div><span class="bar-total">${row.total}</span></div>`).join("");
 }
 
+/**
+ * Render Rechargery type breakdown cards.
+ * @param {Array<object>} rows
+ */
 function renderTypes(rows) {
   $("#type-breakdown").innerHTML = rows.map((row) => `<article class="type-card">
     <div class="type-card__top"><strong>${escapeHtml(row.type)}</strong><b>${row.total}</b></div>
@@ -311,6 +422,10 @@ function renderTypes(rows) {
   </article>`).join("");
 }
 
+/**
+ * Setup dropdown filter options dynamically from data.
+ * @param {object} data
+ */
 function setupFilters(data) {
   const states = [...new Set(data.locations.map((item) => item.state))].sort();
   const types = [...new Set(data.locations.map((item) => item.type))].sort();
@@ -321,6 +436,10 @@ function setupFilters(data) {
   });
 }
 
+/**
+ * Filter and render the station directory table and update map markers.
+ * @param {{ updateMap?: boolean }} options
+ */
 function renderLocations({ updateMap = true } = {}) {
   const query = $("#search-filter").value.trim().toLowerCase();
   const selectedState = $("#state-filter").value;
@@ -350,6 +469,10 @@ function renderLocations({ updateMap = true } = {}) {
   $("#location-count").textContent = `Showing ${filtered.length} of ${state.data.locations.length} active locations in ${visibleViews}.`;
 }
 
+/**
+ * Render recent lifecycle events and changes list.
+ * @param {object} data
+ */
 function renderEvents(data) {
   $("#recent-window").textContent = `Last ${data.recent_days} days`;
   const host = $("#recent-events");
@@ -377,6 +500,9 @@ function renderEvents(data) {
   }).join("");
 }
 
+/**
+ * Fetch dashboard data from backend API and initialize all UI components.
+ */
 async function loadDashboard() {
   try {
     const response = await fetch("/api/dashboard?days=7");

@@ -1,3 +1,11 @@
+"""Storage layer and database ingestion for IONNA Rechargery data.
+
+Manages MongoDB collections:
+- `locations`: Current state of all active and inactive stations.
+- `observations`: Point-in-time station records per scrape run.
+- `events`: Station lifecycle history (discovery, opening, status change).
+- `runs`: Collection execution metadata, payload hashes, counts, and diffs.
+"""
 from __future__ import annotations
 
 from collections import Counter
@@ -10,6 +18,7 @@ from pymongo.database import Database
 
 from .parser import payload_hash
 
+# List of meaningful attributes tracked for field-level diff detection
 TRACKED_FIELDS = (
     "title",
     "street",
@@ -34,16 +43,30 @@ TRACKED_FIELDS = (
 
 
 def utc_now() -> datetime:
+    """Return the current UTC timestamp with timezone awareness."""
     return datetime.now(timezone.utc)
 
 
 def connect(uri: str, database_name: str) -> tuple[MongoClient, Database]:
+    """Establish a connection to the MongoDB instance and verify server readiness.
+
+    Args:
+        uri: MongoDB connection string URI.
+        database_name: Target database name.
+
+    Returns:
+        Tuple of (MongoClient, Database).
+
+    Raises:
+        pymongo.errors.PyMongoError: If connection or ping fails.
+    """
     client = MongoClient(uri, serverSelectionTimeoutMS=5000, tz_aware=True)
     client.admin.command("ping")
     return client, client[database_name]
 
 
 def ensure_indexes(db: Database) -> None:
+    """Create essential MongoDB indexes for locations, observations, events, and runs."""
     db.locations.create_index("source_id", unique=True)
     db.locations.create_index([("active", ASCENDING), ("state", ASCENDING)])
     db.locations.create_index([("active", ASCENDING), ("status", ASCENDING)])
@@ -57,6 +80,7 @@ def ensure_indexes(db: Database) -> None:
 
 
 def _counts(locations: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compute aggregate station counts by operational status and unique state count."""
     statuses = Counter(item["status"] for item in locations)
     return {
         "total": len(locations),
@@ -69,6 +93,7 @@ def _counts(locations: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _field_changes(previous: dict[str, Any], location: dict[str, Any]) -> list[dict[str, Any]]:
+    """Compare tracked fields between previous and current records to identify modifications."""
     changes = []
     for field in TRACKED_FIELDS:
         previous_value = previous.get(field)
@@ -89,6 +114,7 @@ def _run_changes_for_update(
     previous: dict[str, Any],
     field_changes: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    """Format an updated station entry for the run change summary."""
     return {
         "source_id": location["source_id"],
         "title": location["title"],
@@ -103,6 +129,7 @@ def _run_changes_for_update(
 
 
 def _run_changes_for_discovered(location: dict[str, Any]) -> dict[str, Any]:
+    """Format a newly discovered station entry for the run change summary."""
     return {
         "source_id": location["source_id"],
         "title": location["title"],
@@ -114,6 +141,7 @@ def _run_changes_for_discovered(location: dict[str, Any]) -> dict[str, Any]:
 
 
 def _run_changes_for_missing(doc: dict[str, Any]) -> dict[str, Any]:
+    """Format a missing/removed station entry for the run change summary."""
     return {
         "source_id": doc["source_id"],
         "title": doc["title"],
@@ -130,6 +158,25 @@ def ingest(
     fetch_method: str,
     fetched_at: datetime | None = None,
 ) -> dict[str, Any]:
+    """Ingest a fresh set of normalized station records into MongoDB.
+
+    Performs:
+    1. Identification of newly discovered stations vs existing stations.
+    2. Field diff calculation and event generation (status change, observed opening).
+    3. Bulk upsert of latest location states and point-in-time observation logs.
+    4. Marking vanished stations as inactive (missing).
+    5. Writing run execution metadata and change summary.
+
+    Args:
+        db: MongoDB database instance.
+        locations: List of normalized station records.
+        source_url: Source URL fetched.
+        fetch_method: Fetch strategy used ('http' or 'headless_browser').
+        fetched_at: Optional override timestamp (defaults to UTC now).
+
+    Returns:
+        Dictionary containing run summary metadata and field diffs.
+    """
     ensure_indexes(db)
     fetched_at = fetched_at or utc_now()
     run_id = str(uuid4())
@@ -230,6 +277,7 @@ def ingest(
                         )
                     )
 
+        # Batch database write operations for efficiency
         location_ops.append(
             UpdateOne(
                 {"source_id": source_id},
@@ -255,6 +303,7 @@ def ingest(
             )
         )
 
+    # Execute bulk operations
     if location_ops:
         db.locations.bulk_write(location_ops, ordered=False)
     if observation_ops:
@@ -262,6 +311,7 @@ def ingest(
     if event_ops:
         db.events.bulk_write(event_ops, ordered=False)
 
+    # Detect any active locations not present in the current scrape payload
     missing_result = db.locations.update_many(
         {"source_id": {"$nin": source_ids}, "active": True},
         {

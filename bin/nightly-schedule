@@ -1,6 +1,21 @@
 #!/bin/zsh
+# ==============================================================================
+# bin/nightly-schedule — macOS LaunchAgent Lifecycle Management Script
+#
+# Automates the installation, removal, status checking, and manual execution
+# of the nightly scrape collection LaunchAgent on macOS.
+#
+# Commands:
+#   on      Generate dynamic LaunchAgent plist and register with launchctl
+#   off     Unload LaunchAgent and remove plist from ~/Library/LaunchAgents
+#   status  Check whether the LaunchAgent is currently active
+#   run     Kickstart a single manual execution immediately
+#   logs    Tail the latest stdout and stderr logs
+# ==============================================================================
+
 set -euo pipefail
 
+# Configuration constants
 readonly LABEL="com.ionna.rechargery-tracker"
 readonly SCRIPT_DIR="${0:A:h}"
 readonly PROJECT_DIR="${SCRIPT_DIR:h}"
@@ -14,10 +29,12 @@ usage() {
   echo "Usage: bin/nightly-schedule {on|off|status|run|logs}"
 }
 
+# Check if the service is currently registered with launchctl
 is_loaded() {
   launchctl print "${DOMAIN}/${LABEL}" >/dev/null 2>&1
 }
 
+# Generate LaunchAgent plist with dynamic checkout paths
 generate_plist() {
   local py_bin="${PYTHON_BIN}"
   if [[ ! -x "${py_bin}" ]]; then
@@ -32,6 +49,7 @@ generate_plist() {
 
 case "${1:-}" in
   on)
+    # Ensure log and agent directories exist
     mkdir -p "${LOG_DIR}" "${HOME}/Library/LaunchAgents"
     if is_loaded; then
       launchctl bootout "${DOMAIN}/${LABEL}"

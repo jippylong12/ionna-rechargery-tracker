@@ -1,3 +1,10 @@
+"""Analytics and dashboard data preparation for IONNA Rechargery data.
+
+Transforms MongoDB records into dashboard-ready payload structures:
+- Aggregates status counts across states and Rechargery station types.
+- Extracts recent lifecycle events and non-status property modifications.
+- Builds chronological history series for trend visualization.
+"""
 from __future__ import annotations
 
 from collections import Counter, defaultdict
@@ -6,11 +13,12 @@ from typing import Any
 
 from pymongo.database import Database
 
-
+# Canonical ordering for operational statuses in charts and tables
 STATUS_ORDER = ["open", "coming_soon", "under_renovation", "unknown"]
 
 
 def _iso(value: Any) -> str | None:
+    """Format a datetime as an ISO-8601 string with UTC 'Z' suffix."""
     if isinstance(value, datetime):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
@@ -19,6 +27,7 @@ def _iso(value: Any) -> str | None:
 
 
 def _changes_to_events(run: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract non-status station field updates from a run document into event objects."""
     changes = run.get("changes", {})
     if not isinstance(changes, dict):
         return []
@@ -55,6 +64,7 @@ def _changes_to_events(run: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _location_json(item: dict[str, Any]) -> dict[str, Any]:
+    """Serialize a single MongoDB location document for JSON API output."""
     keys = (
         "source_id",
         "title",
@@ -87,6 +97,16 @@ def _location_json(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def dashboard_data(db: Database, recent_days: int = 7) -> dict[str, Any]:
+    """Assemble complete dashboard payload from database collections.
+
+    Args:
+        db: MongoDB database instance.
+        recent_days: Number of days to include in the recent events window.
+
+    Returns:
+        Structured dictionary containing summary metrics, geographic breakdown,
+        type distribution, chronological run history, and active station list.
+    """
     locations = list(db.locations.find({"active": True}, {"_id": False}))
     runs = list(db.runs.find({}, {"_id": False}).sort("fetched_at", 1).limit(500))
     latest_run = runs[-1] if runs else None
@@ -108,11 +128,13 @@ def dashboard_data(db: Database, recent_days: int = 7) -> dict[str, Any]:
             result.append(row)
         return sorted(result, key=lambda row: (-row["total"], row[label_key]))
 
+    # Retrieve discrete lifecycle events from events collection
     recent_events = list(
         db.events.find({"occurred_at": {"$gte": cutoff}}, {"_id": False})
         .sort("occurred_at", -1)
         .limit(100)
     )
+    # Collect non-status modifications from recent runs
     run_events = []
     for run in runs:
         if run.get("fetched_at", datetime.min.replace(tzinfo=timezone.utc)) >= cutoff:
@@ -128,6 +150,7 @@ def dashboard_data(db: Database, recent_days: int = 7) -> dict[str, Any]:
         if isinstance(event.get("occurred_at"), datetime)
     )
 
+    # Build chronological timeseries
     history = []
     for run in runs:
         counts = run.get("counts", {})

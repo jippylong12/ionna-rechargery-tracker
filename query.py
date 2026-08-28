@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+"""CLI query tool for inspecting and searching IONNA Rechargery Tracker data.
+
+Provides fast terminal inspection and JSON export across:
+- Latest collection run summary and station-by-station diffs.
+- Historical collection run logs and growth trends.
+- Recent network lifecycle events (discoveries, openings, status transitions).
+- Station directory filtering by state, operational status, type, or search term.
+- Single-station metadata inspection and historical event timeline.
+"""
 from __future__ import annotations
 
 import argparse
@@ -15,6 +24,7 @@ from ionna_tracker.storage import connect
 
 
 def _iso(value: Any) -> str | None:
+    """Format a datetime value as an ISO-8601 string."""
     if isinstance(value, datetime):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
@@ -23,6 +33,7 @@ def _iso(value: Any) -> str | None:
 
 
 def _format_dt(value: Any) -> str:
+    """Format a datetime value into a human-readable UTC timestamp string."""
     if isinstance(value, datetime):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
@@ -31,6 +42,7 @@ def _format_dt(value: Any) -> str:
 
 
 def _format_val(value: Any) -> str:
+    """Format a field diff value cleanly for terminal display."""
     if value is None:
         return "—"
     if isinstance(value, list):
@@ -41,6 +53,14 @@ def _format_val(value: Any) -> str:
 
 
 def get_latest_run_data(db: Database) -> dict[str, Any] | None:
+    """Fetch the latest scrape run metadata and current network count totals.
+
+    Args:
+        db: MongoDB database instance.
+
+    Returns:
+        Dictionary with 'run' document and 'current_network' totals, or None if no runs exist.
+    """
     run = db.runs.find_one({}, sort=[("fetched_at", -1)])
     if not run:
         return None
@@ -68,6 +88,7 @@ def get_latest_run_data(db: Database) -> dict[str, Any] | None:
 
 
 def print_latest_run(data: dict[str, Any]) -> None:
+    """Print formatted terminal report for the latest scrape run and its deltas."""
     run = data["run"]
     current = data["current_network"]
     fetched_at = run.get("fetched_at")
@@ -174,11 +195,13 @@ def print_latest_run(data: dict[str, Any]) -> None:
 
 
 def get_runs_history(db: Database, limit: int = 10) -> list[dict[str, Any]]:
+    """Retrieve historical collection run documents sorted from most recent."""
     runs = list(db.runs.find({}, {"_id": False}).sort("fetched_at", -1).limit(limit))
     return runs
 
 
 def print_runs_history(runs: list[dict[str, Any]]) -> None:
+    """Render historical collection runs as a formatted ASCII table."""
     if not runs:
         print("No collection runs found.")
         return
@@ -207,6 +230,7 @@ def print_runs_history(runs: list[dict[str, Any]]) -> None:
 
 
 def get_recent_changes(db: Database, days: int = 7) -> list[dict[str, Any]]:
+    """Retrieve lifecycle events occurring within the specified lookback days."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     events = list(
         db.events.find({"occurred_at": {"$gte": cutoff}}, {"_id": False}).sort(
@@ -217,6 +241,7 @@ def get_recent_changes(db: Database, days: int = 7) -> list[dict[str, Any]]:
 
 
 def print_recent_changes(events: list[dict[str, Any]], days: int) -> None:
+    """Print chronological lifecycle events for the recent timeframe."""
     print("=" * 80)
     print(f"  EVENTS & CHANGES IN THE LAST {days} DAYS ({len(events)} Total)")
     print("=" * 80)
@@ -254,6 +279,7 @@ def list_stations(
     search: str | None = None,
     limit: int = 200,
 ) -> list[dict[str, Any]]:
+    """Query active stations matching optional state, status, type, or search filters."""
     query: dict[str, Any] = {"active": True}
     if state:
         query["state"] = {"$regex": f"^{state.strip()}$", "$options": "i"}
@@ -276,6 +302,7 @@ def list_stations(
 
 
 def print_stations(stations: list[dict[str, Any]], limit: int) -> None:
+    """Render matching stations in an ASCII table."""
     if not stations:
         print("No matching stations found.")
         return
@@ -300,6 +327,7 @@ def print_stations(stations: list[dict[str, Any]], limit: int) -> None:
 
 
 def inspect_station(db: Database, query_term: str) -> dict[str, Any] | None:
+    """Find a station by source ID or title and retrieve its complete event history."""
     doc = db.locations.find_one({"source_id": query_term}, {"_id": False})
     if not doc:
         doc = db.locations.find_one(
@@ -317,6 +345,7 @@ def inspect_station(db: Database, query_term: str) -> dict[str, Any] | None:
 
 
 def print_station_inspection(data: dict[str, Any]) -> None:
+    """Print comprehensive details and event history for a single station."""
     s = data["station"]
     events = data.get("events", [])
 
@@ -357,6 +386,7 @@ def print_station_inspection(data: dict[str, Any]) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build and configure the argument parser for the query CLI."""
     parser = argparse.ArgumentParser(
         description="Query IONNA Rechargery Tracker data from MongoDB"
     )
@@ -417,6 +447,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def serialize_for_json(obj: Any) -> Any:
+    """Recursively convert datetime objects and MongoDB keys for JSON output."""
     if isinstance(obj, datetime):
         return _iso(obj)
     if isinstance(obj, list):
@@ -427,6 +458,7 @@ def serialize_for_json(obj: Any) -> Any:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Execute the query CLI command."""
     parser = build_parser()
     args = parser.parse_args(argv)
     settings = Settings()

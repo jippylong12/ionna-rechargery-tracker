@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
+"""CLI collection entry point for the IONNA Rechargery Tracker.
+
+Fetches the live IONNA Rechargery directory page, extracts all embedded station records,
+computes status and diff changes against the MongoDB database, and logs run summaries.
+Supports dry-run preview and JSON output options.
+"""
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+from typing import Any
 
 from ionna_tracker.config import Settings
 from ionna_tracker.fetcher import fetch_direct, fetch_with_browser
@@ -12,6 +19,7 @@ from ionna_tracker.storage import connect, ingest
 
 
 def _value_for_log(value: object) -> str:
+    """Format a value cleanly for console logging."""
     if value is None:
         return "—"
     if isinstance(value, (list, dict)):
@@ -21,11 +29,13 @@ def _value_for_log(value: object) -> str:
     return str(value)
 
 
-def _print_run_changes(run: dict[str, object]) -> None:
+def _print_run_changes(run: dict[str, Any]) -> None:
+    """Print newly discovered and updated station diffs to stdout."""
     changes = run.get("changes", {})
     baseline = run.get("baseline", False)
     if baseline:
         return
+
     discovered = list(changes.get("discovered", []))
     if discovered:
         print("Discovered entries:")
@@ -53,6 +63,7 @@ def _print_run_changes(run: dict[str, object]) -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Collect IONNA Rechargery locations")
     parser.add_argument(
         "--browser-fallback",
@@ -72,7 +83,18 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def collect(url: str, browser_fallback: bool):
+def collect(url: str, browser_fallback: bool) -> tuple[list[dict[str, Any]], str]:
+    """Retrieve and parse the IONNA location dataset.
+
+    Attempts direct HTTP fetch first, falling back to headless browser if enabled.
+
+    Args:
+        url: IONNA map directory page URL.
+        browser_fallback: Whether to attempt Playwright browser fallback on error.
+
+    Returns:
+        Tuple of (list of normalized location dicts, fetch method string).
+    """
     try:
         result = fetch_direct(url)
         locations = normalize_locations(extract_locations(result.html))
@@ -86,6 +108,7 @@ def collect(url: str, browser_fallback: bool):
 
 
 def main() -> int:
+    """Execute collection and database ingestion workflow."""
     args = parse_args()
     settings = Settings()
     try:
