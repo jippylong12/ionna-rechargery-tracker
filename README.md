@@ -1,147 +1,83 @@
 # IONNA Rechargery Tracker
 
-A local, history-aware tracker, CLI query engine, and interactive web dashboard for the [IONNA Rechargery network](https://www.ionna.com/rechargeries/find-a-rechargery/).
+A local, history-aware tracker, CLI query tool, and web dashboard for the [IONNA Rechargery network](https://www.ionna.com/rechargeries/find-a-rechargery/).
 
-It extracts the `window.allLocations` JSON payload embedded in IONNA's public map, stores snapshot observations in MongoDB, tracks station lifecycle events (discoveries, openings, price/connector updates, status transitions), and provides multiple ways to explore the data — via web dashboard, command-line queries, or conversational AI assistants.
-
----
-
-## Features
-
-- **⚡ Fast & Lightweight**: Direct HTTP fetch extracts embedded JSON in milliseconds without launching a browser. *(Playwright fallback available if needed).*
-- **🗄️ Historical Tracking**: Distinguishes the initial baseline from actual network growth. Records state transitions, observed openings, price updates, connector modifications, and missing stations.
-- **🗺️ Interactive Web Dashboard**: Filter-aware Leaflet map synchronized with a sortable data table. Distinct marker colors indicate operational status, while marker shapes represent Rechargery types. Uses local OpenStreetMap tiles (no geocoding API keys required).
-- **💻 CLI Query Engine (`query.py`)**: Instant terminal access to latest run diffs, historical trends, station filtering, and single-station lifecycle inspection with table or JSON output.
-- **🤖 AI-Assisted Investigation (`AGENTS.md`)**: Configured for AI assistants (Google Antigravity, Cursor, Claude Code, Copilot, etc.) to investigate MongoDB and generate field-by-field operational change reports.
-- **⏰ Flexible Scheduling**: Run nightly via macOS LaunchAgent, standard cron, or an AI background agent.
-
----
-
-## What It Tracks
-
-- **Status**: Open, Coming Soon, Under Renovation, Unknown.
-- **Station Details**: Title, street address, city, state, postal code, GPS coordinates, source URL, image URL.
-- **Hardware & Pricing**: Max speed (kW), NACS connectors, CCS connectors, price text, and normalized price per kWh.
-- **Amenities**: Restrooms, dining, shopping, convenience markets, hotels.
-- **Lifecycle Events**: First observed date, last seen date, opening date (tracked only when a location actually transitions to open), and field-level modification history.
-
----
-
-## Prerequisites
-
-- **Python 3.11+**
-- **MongoDB** running locally or remotely (default: `mongodb://127.0.0.1:27017`)
-- *(Optional)* **Node.js 18+** (only needed for frontend test execution)
-
-### Quick MongoDB Setup
-
-<details>
-<summary><b>macOS (Homebrew)</b></summary>
-
-```bash
-brew tap mongodb/brew
-brew install mongodb-community
-brew services start mongodb-community
-```
-</details>
-
-<details>
-<summary><b>Docker (macOS / Linux / Windows)</b></summary>
-
-```bash
-docker run -d -p 27017:27017 --name mongo-ionna mongo:latest
-```
-</details>
+It extracts the `window.allLocations` JSON payload embedded in IONNA's public map, stores observations in local MongoDB, and tracks station lifecycle changes over time (new discoveries, status changes, observed openings, price updates, connector modifications).
 
 ---
 
 ## Quick Start
 
+Get up and running in under a minute:
+
 ```bash
-# 1. Clone the repository
+# 1. Start MongoDB (if not already running)
+# macOS:
+brew services start mongodb-community
+# or Docker:
+docker run -d -p 27017:27017 --name mongo-ionna mongo:latest
+
+# 2. Clone repository & install dependencies
 git clone https://github.com/jippylong12/ionna-rechargery-tracker.git
 cd ionna-rechargery-tracker
-
-# 2. Set up virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# 3. Install dependencies
 pip install -r requirements.txt
-
-# 4. Configure environment (optional overrides)
 cp .env.example .env
 
-# 5. Run your first collection (establishes baseline)
+# 3. Scrape initial data
 python scrape.py
 
-# 6. Start the web dashboard
+# 4. Start the web dashboard
 python server.py
 ```
 
-Then open your browser at **<http://127.0.0.1:5050>**.
+Open **<http://127.0.0.1:5050>** to view the interactive map and table.
 
 ---
 
-## Querying Tracker Data
+## Querying the Data
 
-You can query and inspect the dataset in three ways: **CLI**, **Web Dashboard**, or **AI Assistant**.
+You can inspect and query the dataset via the CLI tool, an AI coding assistant, or the web dashboard.
 
-### 1. CLI Query Engine (`query.py`)
+### 1. CLI Query Tool (`query.py`)
 
-The included `query.py` tool provides formatted terminal tables and raw JSON feeds:
+Run `query.py` to inspect the latest scrape run, search stations, or view historical changes:
 
 ```bash
-# View summary and deltas from the latest collection run (default)
+# View summary and station diffs from the latest run (default)
 python query.py
 
-# View historical collection runs (last 10 runs)
+# View history of the last 10 collection runs
 python query.py --runs 10
 
-# View all network events & status changes over recent days
+# View all station events and changes over the last 7 days
 python query.py --changes --days 7
 
-# Search and filter active stations by state, status, or keyword
+# Search and filter active stations
 python query.py --state TX
 python query.py --status open --state CA
 python query.py --search "Circle K"
 python query.py --search "Relay" --limit 50
 
-# Inspect a single station's full details and historical lifecycle timeline
+# Inspect a single station's full details and lifecycle event timeline
 python query.py --station 6330
 python query.py --station "Austin, TX"
 
-# Output any query as JSON (great for scripts or piping to jq)
+# Output any query in JSON format
 python query.py --latest --json
 python query.py --state TX --json
 ```
 
 ---
 
-### 2. Interactive Web Dashboard
+### 2. Querying with AI Assistants (`AGENTS.md`)
 
-Start the server:
-```bash
-python server.py
-```
-Open **<http://127.0.0.1:5050>** to access:
-- **Map & Table View**: Live synchronized Leaflet map and responsive table.
-- **Status Indicators**: Green (Open), Orange (Coming Soon), Red (Under Renovation).
-- **Type Markers**: Circle (`Rechargery @`), Square (`Rechargery Relay`), Star (`Rechargery Lounge / Flagship`).
-- **Real-time Filtering**: Filter by state, type, or search term; sort by any column.
+This repository is configured for AI assistants (Google Antigravity, Cursor, Claude Code, GitHub Copilot) to inspect the MongoDB database and answer questions about network changes.
 
----
+The included `AGENTS.md` file instructs your AI assistant how to query the database and format operational change reports with before/after field comparisons.
 
-### 3. AI Assistant Investigation (`AGENTS.md`)
-
-This repository is optimized for pair-programming and investigation with AI coding agents (such as **Google Antigravity**, **Cursor**, **Claude Code**, or **GitHub Copilot**).
-
-The repository root includes [`AGENTS.md`](AGENTS.md), which defines the protocol for operational reporting:
-- Directs the AI to inspect MongoDB `runs`, `locations`, and `events` collections.
-- Mandates exact timestamps, count deltas (`discovered`, `updated`, `observed_openings`, `missing`), and current network breakdowns.
-- Requires field-level before/after diffs for updated records while cleanly distinguishing image-only updates from operational changes (pricing, status, power, connectors).
-
-#### Example Prompts to Ask Your AI Assistant:
+#### Example prompts to ask your AI:
 - *"Give me an operational tracker update on the latest run."*
 - *"What changed in the IONNA network today?"*
 - *"List all newly discovered stations in Texas and Colorado."*
@@ -150,25 +86,34 @@ The repository root includes [`AGENTS.md`](AGENTS.md), which defines the protoco
 
 ---
 
+### 3. Web Dashboard
+
+Run `python server.py` and open <http://127.0.0.1:5050> for:
+- **Synchronized Map & Table**: OpenStreetMap-powered Leaflet map and responsive table.
+- **Visual Status & Type**: Color coding by operational status (Green: Open, Orange: Coming Soon, Red: Under Renovation) and distinct marker shapes for station types.
+- **Search & Sort**: Filter by state, status, or keyword; sort by any column.
+
+---
+
 ## Automated Scheduling
 
-Keep your local tracker updated automatically with scheduled scrapes.
+Keep your local database updated with scheduled scrapes.
 
-### Option A: macOS LaunchAgent (Recommended for Mac)
+### Option A: macOS LaunchAgent
 
-A launchd manager script is included under `bin/nightly-schedule`. It dynamically configures the agent for your checkout path and runs daily at 3:00 AM local time (wakes Mac if asleep):
+A built-in management script is provided under `bin/nightly-schedule`. It dynamically configures a launchd agent to run daily at 3:00 AM local time (wakes machine if asleep):
 
 ```bash
-# Enable nightly collection at 3:00 AM
+# Turn on nightly collection at 3:00 AM
 bin/nightly-schedule on
 
 # Check schedule status
 bin/nightly-schedule status
 
-# Trigger a test run immediately
+# Trigger a collection run immediately
 bin/nightly-schedule run
 
-# Tail recent logs
+# View recent log output
 bin/nightly-schedule logs
 
 # Turn off the schedule
@@ -189,7 +134,7 @@ Add an entry to your crontab (`crontab -e`):
 
 ### Option C: AI Agent Scheduler (Antigravity)
 
-If you are using Google Antigravity, you can use the `/schedule` slash command to set up recurring collections:
+When using Google Antigravity, you can use the `/schedule` slash command to run automated collections in the background:
 
 ```text
 /schedule CronExpression="0 3 * * *" Prompt="Run python scrape.py and summarize any new station discoveries, openings, or price changes."
@@ -197,15 +142,25 @@ If you are using Google Antigravity, you can use the `/schedule` slash command t
 
 ---
 
+## What It Tracks
+
+- **Operational Status**: Open, Coming Soon, Under Renovation, Unknown.
+- **Station Data**: Title, street address, city, state, postal code, GPS coordinates, source link, image URL.
+- **Hardware & Pricing**: Max speed (kW), NACS connectors, CCS connectors, price text, normalized price per kWh.
+- **Amenities**: Restrooms, dining, shopping, convenience markets, hotels.
+- **Lifecycle Events**: First observed date, last seen date, opening date (recorded when a location transitions to open), and field modification diffs.
+
+---
+
 ## Optional Headless Browser Fallback
 
-By default, `scrape.py` uses direct HTTP requests. To enable the Playwright headless browser fallback (only invoked if direct extraction fails):
+`scrape.py` uses direct HTTP extraction by default without browser overhead. To install and enable the optional Playwright fallback (only invoked if direct extraction fails):
 
 ```bash
 pip install -r requirements-browser.txt
 playwright install chromium
 
-# Run with browser fallback enabled
+# Run scraper with browser fallback enabled
 python scrape.py --browser-fallback
 ```
 
@@ -213,10 +168,8 @@ python scrape.py --browser-fallback
 
 ## Running Tests
 
-Run the complete test suite to verify storage integration, parser logic, CLI queries, and the dashboard frontend:
-
 ```bash
-# Python unit and integration tests
+# Python unit and storage integration tests
 python -m unittest discover -s tests -v
 
 # JavaScript dashboard frontend tests
@@ -225,16 +178,16 @@ node --test tests/test_dashboard.js
 
 ---
 
-## Database Architecture
+## Database Schema
 
 The tracker manages four collections in MongoDB:
 
 | Collection | Purpose |
 | :--- | :--- |
-| `locations` | Latest known state for each unique station ID (`source_id`). Tracks active status, timestamps, and specs. |
-| `observations` | Point-in-time compact snapshot for each location during every collection run. |
+| `locations` | Latest known state for each unique station ID (`source_id`). |
+| `observations` | Point-in-time snapshot for each location per collection run. |
 | `events` | Discrete lifecycle events (`discovered`, `status_changed`, `observed_open`). |
-| `runs` | Metadata for each collection run: timestamp, method, payload hash, counts, baseline flag, and delta diffs. |
+| `runs` | Collection run metadata: timestamp, method, counts, baseline flag, and delta diffs. |
 
 ---
 
